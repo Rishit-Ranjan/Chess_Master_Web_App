@@ -126,10 +126,10 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
                     <label className="block text-sm font-medium text-gray-300 mb-2">Game Mode</label>
                     <div className="flex rounded-md shadow-sm">
                         <button onClick={() => setGameMode('pva')} className={`flex-1 py-2 px-4 rounded-l-md transition-colors ${gameMode === 'pva' ? 'bg-indigo-600' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                            vs. AI
+                            vs. Computer
                         </button>
-                        <button onClick={() => setGameMode('pvp')} className={`flex-1 py-2 px-4 rounded-r-md transition-colors ${gameMode === 'pvp' ? 'bg-indigo-600' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                            vs. Player
+                        <button onClick={() => setGameMode('pvo')} className={`flex-1 py-2 px-4 rounded-r-md transition-colors ${gameMode === 'pvo' ? 'bg-indigo-600' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                            vs. Online Player
                         </button>
                     </div>
                 </div>
@@ -156,12 +156,25 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
                         </div>
                     </>)}
 
-                {gameMode === 'pvp' && (<div>
-                        <label htmlFor="p2Name" className="block text-sm font-medium text-gray-300 mb-2">Player 2 Name</label>
-                        <input type="text" id="p2Name" value={p2Name} onChange={(e) => setP2Name(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:ring-indigo-500 focus:border-indigo-500"/>
+                {gameMode === 'pvo' && (
+                    <div className="p-4 bg-gray-900 rounded-lg space-y-4">
+                        <h3 className="text-lg font-semibold text-center text-white">Online Play</h3>
+                        <p className="text-sm text-center text-gray-400">
+                            Log in to track your score and play against others.
+                        </p>
+                        <button
+                            onClick={() => alert('Login/Register UI to be implemented here!')}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
+                            Login / Register
+                        </button>
+                        <button
+                            onClick={() => alert('Rankings page to be implemented here!')}
+                            className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
+                            View Rankings
+                        </button>
                     </div>)}
 
-                <button onClick={handleStart} disabled={isStartDisabled} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md transition-colors text-lg disabled:bg-gray-500 disabled:cursor-not-allowed">
+                <button onClick={handleStart} disabled={isStartDisabled} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md transition-colors text-lg disabled:bg-gray-500 disabled:cursor-not-allowed mt-4">
                     Start Game
                 </button>
             </div>
