@@ -37,6 +37,8 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
     const [humanPlayerColor, setHumanPlayerColor] = useState('w');
     const [playerName, setPlayerName] = useState(playerProfile.name);
     const [isGenerating, setIsGenerating] = useState(false);
+    // State to control the visibility of the profile modal
+    const [isProfileVisible, setIsProfileVisible] = useState(false);
     const fileInputRef = useRef(null);
 
     useEffect(() => {
@@ -46,11 +48,12 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
     const handleStart = () => {
         onPlayerNameChange(playerName);
         // For Play with Friend, we pass extra data
+        const profile = { ...playerProfile, name: playerName };
         if (gameMode === 'pvf') {
             const creatorColor = subMode === 'create' ? (Math.random() > 0.5 ? 'w' : 'b') : humanPlayerColor;
-            onGameStart(gameMode, playerName, null, creatorColor, difficulty, { subMode, joinGameId });
+            onGameStart(gameMode, profile, null, creatorColor, difficulty, { subMode, joinGameId });
         } else {
-            onGameStart(gameMode, playerName, 'Player 2', humanPlayerColor, difficulty);
+            onGameStart(gameMode, profile, 'Player 2', humanPlayerColor, difficulty);
         }
     };
 
@@ -108,66 +111,24 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
 
     return (
         <div className="bg-gray-900/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-lg text-white border border-gray-700/50">
-            <div className="text-center mb-8">
+            <div className="relative text-center mb-8">
                 <h1 className="text-5xl font-extrabold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent mb-2">Chess Master</h1>
                 <p className="text-gray-400">Choose your battleground</p>
+                {/* Profile icon button */}
+                <div className="absolute top-0 right-0">
+                    <button onClick={() => setIsProfileVisible(true)} className="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-500/50 hover:border-indigo-500 transition-all shadow-lg shadow-indigo-500/20">
+                        {playerProfile.avatar ? (
+                            <img src={playerProfile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                                <span className="text-xl">👤</span>
+                            </div>
+                        )}
+                    </button>
+                </div>
             </div>
 
             <div className="space-y-8">
-                {/* Profile Section */}
-                <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-                    <div className="relative group">
-                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/png, image/jpeg, image/webp" className="hidden" />
-                        <button onClick={handleAvatarClick} className="w-20 h-20 rounded-full overflow-hidden border-2 border-indigo-500/50 group-hover:border-indigo-500 transition-all shadow-lg shadow-indigo-500/20">
-                            {isGenerating ? (
-                                <div className="w-full h-full flex items-center justify-center bg-gray-800 text-xs text-indigo-400 animate-pulse">Generating...</div>
-                            ) : playerProfile.avatar ? (
-                                <img src={playerProfile.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                                    <span className="text-2xl">👤</span>
-                                </div>
-                            )}
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="text-white text-xs font-bold">EDIT</span>
-                            </div>
-                        </button>
-                    </div>
-                    <div className="flex-grow space-y-4 mt-4">
-                        <input
-                            type="text"
-                            value={playerName}
-                            onChange={(e) => setPlayerName(e.target.value)}
-                            className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none text-lg font-bold"
-                            placeholder="Enter your name"
-                        />
-                        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-700/50">
-                            <div className="text-center">
-                                <div className="text-xs text-gray-500 uppercase">Wins</div>
-                                <div className="font-bold text-green-400">{playerProfile.score?.wins ?? 0}</div>
-                            </div>
-                            <div className="text-center border-l border-r border-gray-700/50">
-                                <div className="text-xs text-gray-500 uppercase">Losses</div>
-                                <div className="font-bold text-red-400">{playerProfile.score?.losses ?? 0}</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-xs text-gray-500 uppercase">Draws</div>
-                                <div className="font-bold text-gray-400">{playerProfile.score?.draws ?? 0}</div>
-                            </div>
-                        </div>
-                        <div className="flex justify-between items-center pt-3 border-t border-gray-700/50">
-                            <span className="text-sm text-gray-400">Rank: <span className="font-bold text-indigo-400">{playerProfile.rank ?? 'Unranked'}</span></span>
-                            <button
-                                onClick={handleGenerateAvatar}
-                                disabled={isGenerating || !playerName.trim()}
-                                className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold transition-colors disabled:opacity-50"
-                            >
-                                {isGenerating ? 'Generating...' : 'Generate Avatar'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
                 {/* Game Mode Selection */}
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-3">Select Game Mode</label>
@@ -256,14 +217,87 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
                     )}
                 </div>
 
+                {/* Start Game Button */}
                 <button
                     onClick={handleStart}
                     disabled={isStartDisabled}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-indigo-600/20 transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-indigo-600/20 transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
                 >
                     {gameMode === 'pvo' ? 'Find Match' : gameMode === 'pvf' && subMode === 'create' ? 'Create & Play' : gameMode === 'pvf' && subMode === 'join' ? 'Join Game' : 'Start Game'}
                 </button>
             </div>
+
+            {/* Profile Modal */}
+            {isProfileVisible && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setIsProfileVisible(false)}>
+                    <div className="relative w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 p-6 animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+                        <button
+                            onClick={() => setIsProfileVisible(false)}
+                            className="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl"
+                            aria-label="Close profile"
+                        >
+                            &times;
+                        </button>
+                        <h2 className="text-2xl font-bold text-center text-indigo-400 mb-6">Your Profile</h2>
+
+                        {/* Profile Details (moved from main GameSetup) */}
+                        <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                            <div className="flex items-center gap-4 mb-4">
+                                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/png, image/jpeg, image/webp" className="hidden" />
+                                <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-indigo-500/50 group-hover:border-indigo-500 transition-all shadow-lg shadow-indigo-500/20 flex-shrink-0 group">
+                                    <button onClick={handleAvatarClick} className="w-full h-full">
+                                        {isGenerating ? (
+                                            <div className="w-full h-full flex items-center justify-center bg-gray-800 text-xs text-indigo-400 animate-pulse">Generating...</div>
+                                        ) : playerProfile.avatar ? (
+                                            <img src={playerProfile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                                                <span className="text-2xl">👤</span>
+                                            </div>
+                                        )}
+                                    </button>
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                        <span className="text-white text-xs font-bold">EDIT</span>
+                                    </div>
+                                </div>
+                                <div className="flex-grow space-y-2">
+                                    <input
+                                        type="text"
+                                        value={playerName}
+                                        onChange={(e) => setPlayerName(e.target.value)}
+                                        className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none text-lg font-bold"
+                                        placeholder="Enter your name"
+                                    />
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm text-gray-400">Rank: <span className="font-bold text-indigo-400">{playerProfile.rank ?? 'Unranked'}</span></span>
+                                        <button
+                                            onClick={handleGenerateAvatar}
+                                            disabled={isGenerating || !playerName.trim()}
+                                            className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold transition-colors disabled:opacity-50"
+                                        >
+                                            {isGenerating ? 'Generating...' : 'Generate Avatar'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-700/50">
+                                <div className="text-center">
+                                    <div className="text-xs text-gray-500 uppercase">Wins</div>
+                                    <div className="font-bold text-green-400">{playerProfile.score?.wins ?? 0}</div>
+                                </div>
+                                <div className="text-center border-l border-r border-gray-700/50">
+                                    <div className="text-xs text-gray-500 uppercase">Losses</div>
+                                    <div className="font-bold text-red-400">{playerProfile.score?.losses ?? 0}</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-xs text-gray-500 uppercase">Draws</div>
+                                    <div className="font-bold text-gray-400">{playerProfile.score?.draws ?? 0}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

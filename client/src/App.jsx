@@ -464,12 +464,12 @@ const App = () => {
         }
     }, [moveHistory, inGame, updateGameStatus]);
 
-    const handleGameStart = useCallback((mode, p1Name, p2NameStr, humanColor, diff, pvfData) => {
+    const handleGameStart = useCallback((mode, p1Profile, p2NameStr, humanColor, diff, pvfData) => {
         setGameMode(mode);
         setPlayerColor(humanColor);
         setDifficulty(diff);
-        setPlayer1(p => ({ ...p, name: p1Name }));
-
+        setPlayer1(p1Profile);
+        const { name: p1Name, avatar, score } = p1Profile;
         if (mode === 'pva') {
             const aiName = 'Local AI';
             setInGame(true);
@@ -482,7 +482,7 @@ const App = () => {
         }
         else if (mode === 'pvo') {
             // For online, we don't start the game here. We start searching.
-            emitSocket('findMatch', { name: p1Name, avatar: player1.avatar, score: player1.score });
+            emitSocket('findMatch', { name: p1Name, avatar, score });
             setPlayer2({
                 name: p2NameStr,
                 avatar: P2_AVATAR_SVG,
@@ -491,9 +491,9 @@ const App = () => {
         } else if (mode === 'pvf') {
             // Play with Friend
             if (pvfData.subMode === 'create') {
-                emitSocket('createGame', { name: p1Name, avatar: player1.avatar, score: player1.score });
+                emitSocket('createGame', { name: p1Name, avatar, score });
             } else {
-                emitSocket('joinGame', { gameId: pvfData.joinGameId, player: { name: p1Name, avatar: player1.avatar, score: player1.score } });
+                emitSocket('joinGame', { gameId: pvfData.joinGameId, player: { name: p1Name, avatar, score } });
             }
             setPlayer2({
                 name: 'Opponent', // Will be updated when game starts
@@ -501,7 +501,7 @@ const App = () => {
                 score: { wins: 0, losses: 0, draws: 0 }
             });
         }
-    }, [handleNewRound, player1.avatar, player1.score]);
+    }, [handleNewRound]);
 
     if (isSearching) {
         return (

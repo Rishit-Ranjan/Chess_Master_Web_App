@@ -114,7 +114,7 @@ io.on('connection', (socket) => {
     socket.on('findMatch', (player) => {
         console.log(`Player ${player.name} (score: ${player.score.wins}) is looking for a match.`);
         // For simplicity, we'll use wins as the score. In a real app, this would be a more complex ELO rating.
-        const playerScore = player.score.wins;
+        const playerScore = player.score?.wins ?? 0;
 
         // Find a suitable opponent
         const opponentIndex = matchmakingQueue.findIndex(
