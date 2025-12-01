@@ -63,10 +63,12 @@ app.get('/api/users/ranking', async (req, res) => {
 // --- Socket.IO Real-time Logic ---
 
 const activeGames = {}; // In-memory store for active games
+const matchmakingQueue = []; // In-memory queue for players seeking a match
 
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
 
+    // --- Private Games (via Game ID) ---
     // Player creates a new game
     socket.on('createGame', (player) => {
         const gameId = `game_${Math.random().toString(36).substr(2, 9)}`;
@@ -108,6 +110,61 @@ io.on('connection', (socket) => {
         }
     });
 
+    // --- Ranked Matchmaking ---
+    socket.on('findMatch', (player) => {
+        console.log(`Player ${player.name} (score: ${player.score.wins}) is looking for a match.`);
+        // For simplicity, we'll use wins as the score. In a real app, this would be a more complex ELO rating.
+        const playerScore = player.score.wins;
+
+        // Find a suitable opponent
+        const opponentIndex = matchmakingQueue.findIndex(
+            p => Math.abs(p.player.score.wins - playerScore) <= 200 // Match within 200 points
+        );
+
+        if (opponentIndex !== -1) {
+            // Match found!
+            const opponent = matchmakingQueue.splice(opponentIndex, 1)[0];
+            console.log(`Match found between ${player.name} and ${opponent.player.name}`);
+
+            const gameId = `game_${Math.random().toString(36).substr(2, 9)}`;
+            const game = new Chess();
+
+            // Randomly assign colors
+            const players = Math.random() < 0.5
+                ? { w: { id: socket.id, ...player }, b: { id: opponent.socket.id, ...opponent.player } }
+                : { w: { id: opponent.socket.id, ...opponent.player }, b: { id: socket.id, ...player } };
+
+            activeGames[gameId] = { game, players };
+
+            // Join both players to the new game room
+            socket.join(gameId);
+            opponent.socket.join(gameId);
+
+            // Notify both players that a match was found
+            io.to(gameId).emit('matchFound', {
+                gameId,
+                fen: game.fen(),
+                players
+            });
+
+        } else {
+            // No suitable opponent found, add player to the queue
+            console.log(`${player.name} added to matchmaking queue.`);
+            matchmakingQueue.push({ socket, player });
+            socket.emit('searchingForMatch');
+        }
+    });
+
+    socket.on('cancelFindMatch', () => {
+        const index = matchmakingQueue.findIndex(p => p.socket.id === socket.id);
+        if (index !== -1) {
+            matchmakingQueue.splice(index, 1);
+            console.log(`Player ${socket.id} removed from matchmaking queue.`);
+            socket.emit('matchmakingCancelled');
+        }
+    });
+
+
     // Player makes a move
     socket.on('makeMove', ({ gameId, move }) => {
         const gameRoom = activeGames[gameId];
@@ -142,7 +199,13 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log(`User disconnected: ${socket.id}`);
-        // Here you could add logic to handle player disconnection during a game
+        // Remove player from matchmaking queue if they disconnect
+        const index = matchmakingQueue.findIndex(p => p.socket.id === socket.id);
+        if (index !== -1) {
+            matchmakingQueue.splice(index, 1);
+            console.log(`Player ${socket.id} removed from queue due to disconnection.`);
+        }
+        // TODO: Handle disconnection during an active game (e.g., declare opponent the winner)
     });
 });
 

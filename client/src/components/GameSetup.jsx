@@ -156,26 +156,15 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
                         </div>
                     </>)}
 
-                {gameMode === 'pvo' && (
-                    <div className="p-4 bg-gray-900 rounded-lg space-y-4">
-                        <h3 className="text-lg font-semibold text-center text-white">Online Play</h3>
-                        <p className="text-sm text-center text-gray-400">
-                            Log in to track your score and play against others.
+                {gameMode === 'pvo' && (<div>
+                        <p className="text-center text-gray-400 mb-4">
+                            You will be matched with a player of similar skill.
                         </p>
-                        <button
-                            onClick={() => alert('Login/Register UI to be implemented here!')}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
-                            Login / Register
-                        </button>
-                        <button
-                            onClick={() => alert('Rankings page to be implemented here!')}
-                            className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
-                            View Rankings
-                        </button>
+                        {/* The "Start Game" button below will become "Find Ranked Match" */}
                     </div>)}
 
                 <button onClick={handleStart} disabled={isStartDisabled} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md transition-colors text-lg disabled:bg-gray-500 disabled:cursor-not-allowed mt-4">
-                    Start Game
+                    {gameMode === 'pvo' ? 'Find Ranked Match' : 'Start Game'}
                 </button>
             </div>
         </div>);

@@ -81,6 +81,7 @@ const App = () => {
     const [lastMove, setLastMove] = useState(null);
     const [inGame, setInGame] = useState(false);
     // Player profiles
+    const [isSearching, setIsSearching] = useState(false);
     const [player1, setPlayer1] = useState(initialPlayer);
     const [player2, setPlayer2] = useState({ name: 'Player 2', avatar: P2_AVATAR_SVG, score: { wins: 0, losses: 0, draws: 0 } });
     const players = useMemo(() => {
@@ -301,6 +302,11 @@ const App = () => {
     const handleChangeSettings = () => {
         setInGame(false);
         handleNewRound(); // Reset game state when going back to settings
+        // If we were searching for a match, cancel it
+        if (isSearching) {
+            emitSocket('cancelFindMatch');
+            setIsSearching(false);
+        }
     };
     const handleGameStart = useCallback((mode, p1Name, p2NameStr, humanColor, diff) => {
         setGameMode(mode);
@@ -309,6 +315,8 @@ const App = () => {
         setPlayer1(p => ({ ...p, name: p1Name }));
         if (mode === 'pva') {
             const aiName = 'Local AI';
+            setInGame(true);
+            handleNewRound();
             setPlayer2({
                 name: aiName,
                 avatar: AI_AVATAR_SVG,
@@ -316,15 +324,15 @@ const App = () => {
             });
         }
         else { // pvp
+            // For online, we don't start the game here. We start searching.
+            emitSocket('findMatch', { name: p1Name, avatar: player1.avatar, score: player1.score });
             setPlayer2({
                 name: p2NameStr,
                 avatar: P2_AVATAR_SVG,
                 score: { wins: 0, losses: 0, draws: 0 }
             });
         }
-        setInGame(true);
-        handleNewRound();
-    }, [handleNewRound]);
+    }, [handleNewRound, player1.avatar, player1.score]);
     const handlePlayerNameChange = useCallback((newName) => {
         setPlayer1(p => ({ ...p, name: newName }));
     }, []);
@@ -364,26 +372,26 @@ const App = () => {
     // Effect for Socket.IO connection and listeners
     useEffect(() => {
         if (inGame && gameMode === 'pvo') {
+            // This effect now only runs when we are IN an online game, not during setup/search
             const setupSocketListeners = () => {
-                onSocket('gameCreated', ({ gameId }) => {
-                    setOnlineGameId(gameId);
-                    // Join the game you just created
-                    emitSocket('joinGame', { gameId, player: { name: player1.name, avatar: player1.avatar } });
-                });
-
-                onSocket('joinedGame', ({ gameId, color, fen }) => {
-                    setOnlineGameId(gameId);
-                    setPlayerColor(color);
-                    const newGame = new Chess(fen);
-                    setGame(newGame);
-                    setInGame(true); // Move to game screen
-                });
-
                 onSocket('gameStart', ({ fen, players: serverPlayers }) => {
                     const newGame = new Chess(fen);
                     setGame(newGame);
                     // Set player info based on what the server assigned
                     // Use a callback for setPlayerColor to get the latest value
+                    setPlayerColor(prevColor => {
+                        setPlayer1(serverPlayers[prevColor]);
+                        setPlayer2(serverPlayers[prevColor === 'w' ? 'b' : 'w']);
+                        return prevColor;
+                    });
+                });
+
+                onSocket('matchFound', ({ gameId, fen, players: serverPlayers }) => {
+                    setIsSearching(false);
+                    setOnlineGameId(gameId);
+                    const newGame = new Chess(fen);
+                    setGame(newGame);
+                    setInGame(true);
                     setPlayerColor(prevColor => {
                         setPlayer1(serverPlayers[prevColor]);
                         setPlayer2(serverPlayers[prevColor === 'w' ? 'b' : 'w']);
@@ -409,7 +417,33 @@ const App = () => {
 
             return () => disconnectSocket(); // Cleanup on component unmount or when dependencies change
         }
-    }, [inGame, gameMode, player1.name, player1.avatar]);
+    }, [inGame, gameMode]);
+
+    // Effect for matchmaking listeners, runs outside of the game itself
+    useEffect(() => {
+        if (gameMode === 'pvo' && !inGame) {
+            const setupMatchmakingListeners = () => {
+                onSocket('searchingForMatch', () => {
+                    setIsSearching(true);
+                });
+
+                onSocket('matchFound', ({ gameId, fen, players: serverPlayers }) => {
+                    setIsSearching(false);
+                    setOnlineGameId(gameId);
+                    const newGame = new Chess(fen);
+                    setGame(newGame);
+                    setInGame(true); // This will trigger the game screen to show
+                    // Figure out our color
+                    const myColor = Object.keys(serverPlayers).find(c => serverPlayers[c].name === player1.name) || 'w';
+                    setPlayerColor(myColor);
+                    setPlayer1(serverPlayers[myColor]);
+                    setPlayer2(serverPlayers[myColor === 'w' ? 'b' : 'w']);
+                });
+            };
+            connectSocket();
+            setupMatchmakingListeners();
+        }
+    }, [gameMode, inGame, player1.name]);
 
     // Effect to check game status after every move
     useEffect(() => {
@@ -419,29 +453,24 @@ const App = () => {
             updateGameStatus();
         }
     }, [moveHistory, inGame, updateGameStatus]);
-    if (!inGame) {
-        return (<div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-                <GameSetup onGameStart={handleGameStart} playerProfile={player1} onPlayerNameChange={handlePlayerNameChange} onAvatarChange={handleAvatarChange}/>
-                {/* UI for creating/joining online games would go here */}
-            </div>);
-    }
 
-    // Special UI for waiting for an online opponent
-    if (gameMode === 'pvo' && onlineGameId && (!players.w || !players.b)) {
+    if (isSearching) {
         return (
             <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-                <div className="text-2xl font-bold animate-pulse">Waiting for opponent...</div>
-                <div className="mt-4 p-4 bg-gray-800 rounded-lg">
-                    <p className="text-lg">Share this Game ID with your friend:</p>
-                    <input
-                        type="text"
-                        readOnly
-                        value={onlineGameId}
-                        className="w-full mt-2 p-2 bg-gray-700 text-white rounded text-center"
-                        onFocus={(e) => e.target.select()}/>
-                </div>
+                <div className="text-2xl font-bold animate-pulse">Searching for opponent...</div>
+                <button
+                    onClick={handleChangeSettings}
+                    className="mt-8 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
+                    Cancel
+                </button>
             </div>
         );
+    }
+
+    if (!inGame && !isSearching) {
+        return (<div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
+                <GameSetup onGameStart={handleGameStart} playerProfile={player1} onPlayerNameChange={handlePlayerNameChange} onAvatarChange={handleAvatarChange}/>
+            </div>);
     }
     return (<div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-2 sm:p-4">
              {gameOverState && <GameOverModal state={gameOverState} onNewGame={handleNewRound} players={players}/>}
