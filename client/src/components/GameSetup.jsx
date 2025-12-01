@@ -31,48 +31,55 @@ const generateLocalAvatar = (name) => {
 };
 export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAvatarChange }) => {
     const [gameMode, setGameMode] = useState('pva');
+    const [subMode, setSubMode] = useState('create'); // 'create' or 'join' for pvf
+    const [joinGameId, setJoinGameId] = useState('');
     const [difficulty, setDifficulty] = useState('medium');
     const [humanPlayerColor, setHumanPlayerColor] = useState('w');
     const [playerName, setPlayerName] = useState(playerProfile.name);
-    const [p2Name, setP2Name] = useState('Player 2');
     const [isGenerating, setIsGenerating] = useState(false);
     const fileInputRef = useRef(null);
+
     useEffect(() => {
         setPlayerName(playerProfile.name);
     }, [playerProfile.name]);
+
     const handleStart = () => {
         onPlayerNameChange(playerName);
-        onGameStart(gameMode, playerName, p2Name, humanPlayerColor, difficulty);
+        // For Play with Friend, we pass extra data
+        if (gameMode === 'pvf') {
+            onGameStart(gameMode, playerName, null, humanPlayerColor, difficulty, { subMode, joinGameId });
+        } else {
+            onGameStart(gameMode, playerName, 'Player 2', humanPlayerColor, difficulty);
+        }
     };
+
     const handleGenerateAvatar = () => {
         if (!playerName.trim()) {
             alert("Please enter your name first.");
             return;
         }
         setIsGenerating(true);
-        // Simulate a short delay for better UX, as local generation is instant
         setTimeout(() => {
             try {
                 const avatarDataUrl = generateLocalAvatar(playerName);
                 if (avatarDataUrl) {
                     onAvatarChange(avatarDataUrl);
-                }
-                else {
+                } else {
                     alert("Failed to generate avatar. Please try again.");
                 }
-            }
-            catch (error) {
+            } catch (error) {
                 console.error("Local avatar generation failed:", error);
                 alert("An error occurred while generating the avatar.");
-            }
-            finally {
+            } finally {
                 setIsGenerating(false);
             }
         }, 300);
     };
+
     const handleAvatarClick = () => {
         fileInputRef.current?.click();
     };
+
     const handleFileChange = (event) => {
         const file = event.target.files?.[0];
         if (file) {
@@ -80,8 +87,7 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
             reader.onload = (e) => {
                 if (e.target?.result) {
                     onAvatarChange(e.target.result);
-                }
-                else {
+                } else {
                     alert("Failed to read the avatar file.");
                 }
             };
@@ -90,82 +96,159 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
             };
             reader.readAsDataURL(file);
         }
-        // Reset file input to allow re-uploading the same file
         if (event.target) {
             event.target.value = '';
         }
     };
-    const isStartDisabled = (gameMode === 'pvp' && (!playerName.trim() || !p2Name.trim())) || (gameMode === 'pva' && !playerName.trim());
-    return (<div className="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-md text-white">
-            <div className="flex items-center justify-center gap-4 mb-6">
-               
-                <h1 className="text-4xl font-bold text-center">Chess Master</h1>
+
+    const isStartDisabled =
+        !playerName.trim() ||
+        (gameMode === 'pvf' && subMode === 'join' && !joinGameId.trim());
+
+    return (
+        <div className="bg-gray-900/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-lg text-white border border-gray-700/50">
+            <div className="text-center mb-8">
+                <h1 className="text-5xl font-extrabold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent mb-2">Chess Master</h1>
+                <p className="text-gray-400">Choose your battleground</p>
             </div>
-            <div className="space-y-6">
-                <div className="flex items-center gap-4 p-4 bg-gray-900 rounded-lg">
-                    <div className="flex-shrink-0">
-                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/png, image/jpeg, image/webp" className="hidden" aria-hidden="true"/>
-                        <button onClick={handleAvatarClick} className="group w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border-2 border-gray-600 relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500" aria-label="Change avatar">
-                           {isGenerating ? (<div className="animate-pulse text-gray-400 text-sm">Generating...</div>) : playerProfile.avatar ? (<img src={playerProfile.avatar} alt="Player Avatar" className="w-full h-full object-cover"/>) : (<svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>)}
-                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+
+            <div className="space-y-8">
+                {/* Profile Section */}
+                <div className="flex items-center gap-6 p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                    <div className="relative group">
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/png, image/jpeg, image/webp" className="hidden" />
+                        <button onClick={handleAvatarClick} className="w-20 h-20 rounded-full overflow-hidden border-2 border-indigo-500/50 group-hover:border-indigo-500 transition-all shadow-lg shadow-indigo-500/20">
+                            {isGenerating ? (
+                                <div className="w-full h-full flex items-center justify-center bg-gray-800 text-xs text-indigo-400 animate-pulse">Generating...</div>
+                            ) : playerProfile.avatar ? (
+                                <img src={playerProfile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                                    <span className="text-2xl">👤</span>
+                                </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-white text-xs font-bold">EDIT</span>
                             </div>
                         </button>
                     </div>
-                    <div className="flex-grow space-y-2">
-                        <label htmlFor="playerName" className="block text-sm font-medium text-gray-300">Your Name</label>
-                        <input type="text" id="playerName" value={playerName} onChange={(e) => setPlayerName(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:ring-indigo-500 focus:border-indigo-500"/>
-                         <button onClick={handleGenerateAvatar} disabled={isGenerating || !playerName.trim()} className="w-full text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded transition-colors">
-                            {isGenerating ? 'Generating...' : 'Generate Avatar'}
+                    <div className="flex-grow space-y-3">
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Player Name</label>
+                            <input
+                                type="text"
+                                value={playerName}
+                                onChange={(e) => setPlayerName(e.target.value)}
+                                className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                                placeholder="Enter your name"
+                            />
+                        </div>
+                        <button
+                            onClick={handleGenerateAvatar}
+                            disabled={isGenerating || !playerName.trim()}
+                            className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold transition-colors disabled:opacity-50"
+                        >
+                            Generate Random Avatar
                         </button>
                     </div>
                 </div>
 
-
+                {/* Game Mode Selection */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Game Mode</label>
-                    <div className="flex rounded-md shadow-sm">
-                        <button onClick={() => setGameMode('pva')} className={`flex-1 py-2 px-4 rounded-l-md transition-colors ${gameMode === 'pva' ? 'bg-indigo-600' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                            vs. Computer
-                        </button>
-                        <button onClick={() => setGameMode('pvo')} className={`flex-1 py-2 px-4 rounded-r-md transition-colors ${gameMode === 'pvo' ? 'bg-indigo-600' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                            vs. Online Player
-                        </button>
+                    <label className="block text-sm font-medium text-gray-300 mb-3">Select Game Mode</label>
+                    <div className="grid grid-cols-3 gap-3">
+                        {[
+                            { id: 'pva', label: 'vs Computer', icon: '🤖' },
+                            { id: 'pvo', label: 'Ranked', icon: '🏆' },
+                            { id: 'pvf', label: 'Play Friend', icon: '👥' }
+                        ].map(mode => (
+                            <button
+                                key={mode.id}
+                                onClick={() => setGameMode(mode.id)}
+                                className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 ${gameMode === mode.id
+                                        ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-500/30 transform scale-105'
+                                        : 'bg-gray-800 border-gray-700 hover:bg-gray-750 hover:border-gray-600'
+                                    }`}
+                            >
+                                <span className="text-2xl mb-1">{mode.icon}</span>
+                                <span className="text-xs font-bold">{mode.label}</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {gameMode === 'pva' && (<>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">Your Color</label>
-                            <div className="flex rounded-md shadow-sm">
-                                <button onClick={() => setHumanPlayerColor('w')} className={`flex-1 py-2 px-4 rounded-l-md transition-colors ${humanPlayerColor === 'w' ? 'bg-gray-200 text-black' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                                    White
-                                </button>
-                                <button onClick={() => setHumanPlayerColor('b')} className={`flex-1 py-2 px-4 rounded-r-md transition-colors ${humanPlayerColor === 'b' ? 'bg-gray-900 text-white' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                                    Black
-                                </button>
+                {/* Mode Specific Options */}
+                <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50 min-h-[120px] flex flex-col justify-center">
+                    {gameMode === 'pva' && (
+                        <div className="space-y-4 animate-fadeIn">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-400">Difficulty</span>
+                                <div className="flex bg-gray-900 rounded-lg p-1">
+                                    {['easy', 'medium', 'hard'].map(d => (
+                                        <button
+                                            key={d}
+                                            onClick={() => setDifficulty(d)}
+                                            className={`px-3 py-1 rounded-md text-xs font-bold capitalize transition-all ${difficulty === d
+                                                    ? (d === 'easy' ? 'bg-green-600 text-white' : d === 'medium' ? 'bg-yellow-600 text-white' : 'bg-red-600 text-white')
+                                                    : 'text-gray-400 hover:text-white'
+                                                }`}
+                                        >
+                                            {d}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-400">Play As</span>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setHumanPlayerColor('w')} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${humanPlayerColor === 'w' ? 'border-indigo-500 bg-white text-black' : 'border-gray-600 bg-gray-300 text-gray-500'}`}>♔</button>
+                                    <button onClick={() => setHumanPlayerColor('b')} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${humanPlayerColor === 'b' ? 'border-indigo-500 bg-black text-white' : 'border-gray-600 bg-gray-800 text-gray-500'}`}>♚</button>
+                                </div>
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">AI Difficulty</label>
-                            <div className="flex rounded-md shadow-sm">
-                                 <button onClick={() => setDifficulty('easy')} className={`flex-1 py-2 px-4 rounded-l-md transition-colors ${difficulty === 'easy' ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'}`}>Easy</button>
-                                <button onClick={() => setDifficulty('medium')} className={`flex-1 py-2 px-4 transition-colors ${difficulty === 'medium' ? 'bg-yellow-600' : 'bg-gray-700 hover:bg-gray-600'}`}>Medium</button>
-                                <button onClick={() => setDifficulty('hard')} className={`flex-1 py-2 px-4 rounded-r-md transition-colors ${difficulty === 'hard' ? 'bg-red-600' : 'bg-gray-700 hover:bg-gray-600'}`}>Hard</button>
-                            </div>
+                    )}
+
+                    {gameMode === 'pvo' && (
+                        <div className="text-center animate-fadeIn">
+                            <p className="text-sm text-gray-300">Find a worthy opponent online.</p>
+                            <p className="text-xs text-gray-500 mt-1">Matchmaking based on your wins.</p>
                         </div>
-                    </>)}
+                    )}
 
-                {gameMode === 'pvo' && (<div>
-                        <p className="text-center text-gray-400 mb-4">
-                            You will be matched with a player of similar skill.
-                        </p>
-                        {/* The "Start Game" button below will become "Find Ranked Match" */}
-                    </div>)}
+                    {gameMode === 'pvf' && (
+                        <div className="space-y-4 animate-fadeIn">
+                            <div className="flex bg-gray-900 rounded-lg p-1">
+                                <button onClick={() => setSubMode('create')} className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all ${subMode === 'create' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>Create Game</button>
+                                <button onClick={() => setSubMode('join')} className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all ${subMode === 'join' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>Join Game</button>
+                            </div>
 
-                <button onClick={handleStart} disabled={isStartDisabled} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md transition-colors text-lg disabled:bg-gray-500 disabled:cursor-not-allowed mt-4">
-                    {gameMode === 'pvo' ? 'Find Ranked Match' : 'Start Game'}
+                            {subMode === 'create' ? (
+                                <div className="text-center text-sm text-gray-400">
+                                    Start a game and share the code with a friend.
+                                </div>
+                            ) : (
+                                <div>
+                                    <input
+                                        type="text"
+                                        value={joinGameId}
+                                        onChange={(e) => setJoinGameId(e.target.value)}
+                                        placeholder="Enter Game Code"
+                                        className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white text-center tracking-widest placeholder-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <button
+                    onClick={handleStart}
+                    disabled={isStartDisabled}
+                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-indigo-600/20 transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                    {gameMode === 'pvo' ? 'Find Match' : gameMode === 'pvf' && subMode === 'create' ? 'Create & Play' : gameMode === 'pvf' && subMode === 'join' ? 'Join Game' : 'Start Game'}
                 </button>
             </div>
-        </div>);
+        </div>
+    );
 };

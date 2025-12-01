@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Chess } from 'chess.js';
 import { getLocalAiMove } from './services/localAiService';
-import { connectSocket, onSocket, emitSocket, disconnectSocket } from './services/socketService';
+//import { connectSocket, onSocket, emitSocket, disconnectSocket } from './services/socketService';
 import Chessboard from './components/Chessboard';
 import MoveHistory from './components/MoveHistory';
 import GameControls from './components/GameControls';
@@ -308,31 +308,7 @@ const App = () => {
             setIsSearching(false);
         }
     };
-    const handleGameStart = useCallback((mode, p1Name, p2NameStr, humanColor, diff) => {
-        setGameMode(mode);
-        setPlayerColor(humanColor);
-        setDifficulty(diff);
-        setPlayer1(p => ({ ...p, name: p1Name }));
-        if (mode === 'pva') {
-            const aiName = 'Local AI';
-            setInGame(true);
-            handleNewRound();
-            setPlayer2({
-                name: aiName,
-                avatar: AI_AVATAR_SVG,
-                score: { wins: 0, losses: 0, draws: 0 }
-            });
-        }
-        else { // pvp
-            // For online, we don't start the game here. We start searching.
-            emitSocket('findMatch', { name: p1Name, avatar: player1.avatar, score: player1.score });
-            setPlayer2({
-                name: p2NameStr,
-                avatar: P2_AVATAR_SVG,
-                score: { wins: 0, losses: 0, draws: 0 }
-            });
-        }
-    }, [handleNewRound, player1.avatar, player1.score]);
+
     const handlePlayerNameChange = useCallback((newName) => {
         setPlayer1(p => ({ ...p, name: newName }));
     }, []);
@@ -342,6 +318,7 @@ const App = () => {
 
     // --- Online Game State ---
     const [onlineGameId, setOnlineGameId] = useState(null);
+    const [createdGameId, setCreatedGameId] = useState(null); // For PVF creator
 
     // Effect to load player profile on mount
     useEffect(() => {
@@ -371,7 +348,7 @@ const App = () => {
 
     // Effect for Socket.IO connection and listeners
     useEffect(() => {
-        if (inGame && gameMode === 'pvo') {
+        if (inGame && (gameMode === 'pvo' || gameMode === 'pvf')) {
             // This effect now only runs when we are IN an online game, not during setup/search
             const setupSocketListeners = () => {
                 onSocket('gameStart', ({ fen, players: serverPlayers }) => {
@@ -409,6 +386,11 @@ const App = () => {
 
                 onSocket('error', (message) => {
                     alert(`Error: ${message}`);
+                    // If game not found or full, go back to setup
+                    if (message === 'Game not found.' || message === 'Game is full.') {
+                        setInGame(false);
+                        setCreatedGameId(null);
+                    }
                 });
             };
 
@@ -419,9 +401,9 @@ const App = () => {
         }
     }, [inGame, gameMode]);
 
-    // Effect for matchmaking listeners, runs outside of the game itself
+    // Effect for matchmaking/game creation listeners, runs outside of the game itself
     useEffect(() => {
-        if (gameMode === 'pvo' && !inGame) {
+        if ((gameMode === 'pvo' || gameMode === 'pvf') && !inGame) {
             const setupMatchmakingListeners = () => {
                 onSocket('searchingForMatch', () => {
                     setIsSearching(true);
@@ -433,6 +415,34 @@ const App = () => {
                     const newGame = new Chess(fen);
                     setGame(newGame);
                     setInGame(true); // This will trigger the game screen to show
+                    // Figure out our color
+                    const myColor = Object.keys(serverPlayers).find(c => serverPlayers[c].name === player1.name) || 'w';
+                    setPlayerColor(myColor);
+                    setPlayer1(serverPlayers[myColor]);
+                    setPlayer2(serverPlayers[myColor === 'w' ? 'b' : 'w']);
+                });
+
+                // PVF Listeners
+                onSocket('gameCreated', ({ gameId }) => {
+                    setCreatedGameId(gameId);
+                    setOnlineGameId(gameId);
+                });
+
+                onSocket('joinedGame', ({ gameId, color, fen }) => {
+                    setOnlineGameId(gameId);
+                    setPlayerColor(color);
+                    const newGame = new Chess(fen);
+                    setGame(newGame);
+                    setInGame(true);
+                    setCreatedGameId(null); // Clear waiting screen if we were creator (though creator gets gameStart usually)
+                });
+
+                // For the creator, gameStart will trigger the transition
+                onSocket('gameStart', ({ fen, players: serverPlayers }) => {
+                    setCreatedGameId(null); // Stop showing waiting screen
+                    setInGame(true);
+                    const newGame = new Chess(fen);
+                    setGame(newGame);
                     // Figure out our color
                     const myColor = Object.keys(serverPlayers).find(c => serverPlayers[c].name === player1.name) || 'w';
                     setPlayerColor(myColor);
@@ -454,6 +464,45 @@ const App = () => {
         }
     }, [moveHistory, inGame, updateGameStatus]);
 
+    const handleGameStart = useCallback((mode, p1Name, p2NameStr, humanColor, diff, pvfData) => {
+        setGameMode(mode);
+        setPlayerColor(humanColor);
+        setDifficulty(diff);
+        setPlayer1(p => ({ ...p, name: p1Name }));
+
+        if (mode === 'pva') {
+            const aiName = 'Local AI';
+            setInGame(true);
+            handleNewRound();
+            setPlayer2({
+                name: aiName,
+                avatar: AI_AVATAR_SVG,
+                score: { wins: 0, losses: 0, draws: 0 }
+            });
+        }
+        else if (mode === 'pvo') {
+            // For online, we don't start the game here. We start searching.
+            emitSocket('findMatch', { name: p1Name, avatar: player1.avatar, score: player1.score });
+            setPlayer2({
+                name: p2NameStr,
+                avatar: P2_AVATAR_SVG,
+                score: { wins: 0, losses: 0, draws: 0 }
+            });
+        } else if (mode === 'pvf') {
+            // Play with Friend
+            if (pvfData.subMode === 'create') {
+                emitSocket('createGame', { name: p1Name, avatar: player1.avatar, score: player1.score });
+            } else {
+                emitSocket('joinGame', { gameId: pvfData.joinGameId, player: { name: p1Name, avatar: player1.avatar, score: player1.score } });
+            }
+            setPlayer2({
+                name: 'Opponent', // Will be updated when game starts
+                avatar: P2_AVATAR_SVG,
+                score: { wins: 0, losses: 0, draws: 0 }
+            });
+        }
+    }, [handleNewRound, player1.avatar, player1.score]);
+
     if (isSearching) {
         return (
             <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
@@ -467,35 +516,81 @@ const App = () => {
         );
     }
 
-    if (!inGame && !isSearching) {
-        return (<div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-                <GameSetup onGameStart={handleGameStart} playerProfile={player1} onPlayerNameChange={handlePlayerNameChange} onAvatarChange={handleAvatarChange}/>
-            </div>);
-    }
-    return (<div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-2 sm:p-4">
-             {gameOverState && <GameOverModal state={gameOverState} onNewGame={handleNewRound} players={players}/>}
-             {promotionData && <PromotionModal color={game.turn()} onSelect={handlePromotionSelect}/>}
-            <main className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-4">
-                <div className="lg:w-1/4 flex flex-col gap-4 order-2 lg:order-1">
-                    <PlayerInfo player={players.b} color="b" isTurn={game.turn() === 'b'}/>
-                    <div className="flex-grow flex flex-col gap-4 p-4 bg-gray-800 rounded-lg">
-                        <GameStatus turn={game.turn()} isCheck={game.inCheck()} isGameOver={!!gameOverState} players={players}/>
-                        <GameControls onNewRound={handleNewRound} onChangeSettings={handleChangeSettings} onUndoMove={handleUndoMove} onResign={handleResign} isUndoPossible={moveHistory.length > 0} isGameOver={!!gameOverState}/>
+    if (createdGameId) {
+        return (
+            <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
+                <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl text-center max-w-md w-full border border-gray-700">
+                    <h2 className="text-3xl font-bold mb-2 text-indigo-400">Waiting for Friend</h2>
+                    <p className="text-gray-400 mb-6">Share this code with your friend to play</p>
+
+                    <div className="bg-gray-900 p-4 rounded-xl border border-gray-600 mb-6 flex items-center justify-between group relative">
+                        <code className="text-3xl font-mono tracking-wider text-white w-full">{createdGameId}</code>
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl cursor-pointer"
+                            onClick={() => navigator.clipboard.writeText(createdGameId)}>
+                            <span className="text-sm font-bold">Click to Copy</span>
+                        </div>
                     </div>
-                     <PlayerInfo player={players.w} color="w" isTurn={game.turn() === 'w'}/>
+
+                    <div className="flex justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+                    </div>
+
+                    <button
+                        onClick={() => { setCreatedGameId(null); setGameMode('pva'); }} // Simple cancel for now
+                        className="mt-8 text-gray-500 hover:text-white text-sm underline">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (!inGame && !isSearching) {
+        return (
+            <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-[#0a0a0a] to-black text-white flex flex-col items-center justify-center p-4">
+                <GameSetup onGameStart={handleGameStart} playerProfile={player1} onPlayerNameChange={handlePlayerNameChange} onAvatarChange={handleAvatarChange} />
+            </div>
+        );
+    }
+    return (
+        <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-[#0a0a0a] to-black text-white flex flex-col items-center justify-center p-2 sm:p-4 font-sans">
+            {gameOverState && <GameOverModal state={gameOverState} onNewGame={handleNewRound} players={players} />}
+            {promotionData && <PromotionModal color={game.turn()} onSelect={handlePromotionSelect} />}
+
+            <main className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
+                {/* Left Panel: Player Info & Controls */}
+                <div className="lg:w-1/4 flex flex-col gap-4 order-2 lg:order-1">
+                    <PlayerInfo player={players.b} color="b" isTurn={game.turn() === 'b'} />
+
+                    <div className="flex-grow flex flex-col gap-4 p-5 bg-gray-900/60 backdrop-blur-xl border border-white/5 rounded-2xl shadow-xl">
+                        <GameStatus turn={game.turn()} isCheck={game.inCheck()} isGameOver={!!gameOverState} players={players} />
+                        <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent my-2"></div>
+                        <GameControls onNewRound={handleNewRound} onChangeSettings={handleChangeSettings} onUndoMove={handleUndoMove} onResign={handleResign} isUndoPossible={moveHistory.length > 0} isGameOver={!!gameOverState} />
+                    </div>
+
+                    <PlayerInfo player={players.w} color="w" isTurn={game.turn() === 'w'} />
                 </div>
 
+                {/* Center: Chessboard */}
                 <div className="flex-grow flex justify-center items-center order-1 lg:order-2 relative">
-                    {isAiThinking && (<div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center z-20 rounded-lg">
-                           <div className="text-2xl font-bold animate-pulse">{player2.name} is thinking...</div>
-                        </div>)}
-                    <Chessboard board={game.board()} onSquareClick={handleSquareClick} selectedSquare={selectedSquare} possibleMoves={possibleMoves.map(m => m.to)} playerColor={gameMode === 'pvp' ? game.turn() : playerColor} lastMove={lastMove} checkmateHighlight={checkmateHighlight}/>
+                    {isAiThinking && (
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-lg">
+                            <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 animate-pulse">
+                                {player2.name} is thinking...
+                            </div>
+                        </div>
+                    )}
+                    <div className="p-1 rounded-lg bg-gradient-to-br from-gray-700 to-gray-900 shadow-2xl">
+                        <Chessboard board={game.board()} onSquareClick={handleSquareClick} selectedSquare={selectedSquare} possibleMoves={possibleMoves.map(m => m.to)} playerColor={gameMode === 'pvp' ? game.turn() : playerColor} lastMove={lastMove} checkmateHighlight={checkmateHighlight} />
+                    </div>
                 </div>
 
-                <div className="lg:w-1/4 flex flex-col p-4 bg-gray-800 rounded-lg order-3">
-                    <MoveHistory moves={moveHistory}/>
+                {/* Right Panel: History */}
+                <div className="lg:w-1/4 flex flex-col order-3 h-[600px] lg:h-auto">
+                    <MoveHistory moves={moveHistory} />
                 </div>
             </main>
-        </div>);
+        </div>
+    );
 };
 export default App;
