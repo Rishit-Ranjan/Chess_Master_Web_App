@@ -129,6 +129,41 @@ app.get('/api/users/:id', async (req, res) => {
     }
 });
 
+// Update a user's profile (name, avatar)
+app.put('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, avatar } = req.body;
+
+    if (!name && !avatar) {
+        return res.status(400).json({ message: 'No update data provided (name or avatar).' });
+    }
+
+    // Build the query dynamically to update only the provided fields
+    const fieldsToUpdate = [];
+    const values = [];
+
+    if (name) {
+        fieldsToUpdate.push('name = ?');
+        values.push(name);
+    }
+    if (avatar) {
+        fieldsToUpdate.push('avatar = ?');
+        values.push(avatar);
+    }
+
+    values.push(id); // Add the user ID for the WHERE clause
+
+    const sql = `UPDATE users SET ${fieldsToUpdate.join(', ')} WHERE id = ?`;
+
+    try {
+        await dbPool.execute(sql, values);
+        res.json({ message: 'Profile updated successfully.' });
+    } catch (error) {
+        console.error(`Error updating user ${id}:`, error);
+        res.status(500).json({ message: 'Error updating user profile.' });
+    }
+});
+
 // --- Socket.IO Real-time Logic ---
 
 const activeGames = {}; // In-memory store for active games
