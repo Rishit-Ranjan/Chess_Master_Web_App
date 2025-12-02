@@ -25,7 +25,10 @@ const PlayerInfo = ({ player, color, isTurn, capturedPieces = [] }) => {
                         <h3 className="text-lg font-bold truncate text-white tracking-wide">{player.name}</h3>
                         {isTurn && <span className="text-xs font-bold text-indigo-400 animate-pulse">PLAYING</span>}
                     </div>
-                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{colorName}</p>
+                    <div className="flex items-center gap-2">
+                        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{colorName}</p>
+                        {player.ranking && <p className="text-xs font-semibold text-amber-400">{player.ranking}</p>}
+                    </div>
                 </div>
             </div>
 

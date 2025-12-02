@@ -151,31 +151,8 @@ const App = () => {
         if (winner !== null) {
             setGameOverState({ reason, winner });
             setCheckmateHighlight(getCheckmateHighlightData(game));
-            // Update scores
-            const updatePlayerScore = (player, result) => ({
-                ...player,
-                score: {
-                    ...player.score,
-                    wins: player.score.wins + (result === 'win' ? 1 : 0),
-                    losses: player.score.losses + (result === 'loss' ? 1 : 0),
-                    draws: player.score.draws + (result === 'draw' ? 1 : 0),
-                }
-            });
-            const p1Result = winner === 'draw' ? 'draw' : (players[winner] === player1 ? 'win' : 'loss');
-            if (p1Result === 'win') {
-                setPlayer1(p => updatePlayerScore(p, 'win'));
-                setPlayer2(p => updatePlayerScore(p, 'loss'));
-            }
-            else if (p1Result === 'loss') {
-                setPlayer1(p => updatePlayerScore(p, 'loss'));
-                setPlayer2(p => updatePlayerScore(p, 'win'));
-            }
-            else { // draw
-                setPlayer1(p => updatePlayerScore(p, 'draw'));
-                setPlayer2(p => updatePlayerScore(p, 'draw'));
-            }
         }
-    }, [game, isResigned, player1, players]);
+    }, [game, isResigned]);
     const makeMove = useCallback((move) => {
         try {
             // Create a new game instance from PGN to preserve history for undo
@@ -318,6 +295,11 @@ const App = () => {
         const winner = game.turn() === 'w' ? 'b' : 'w';
         const reason = `${players[game.turn()].name} resigned.`;
         setGameOverState({ reason, winner });
+        // For online games, notify the server
+        if (gameMode === 'pvo' || gameMode === 'pvf') {
+            emitSocket('resign', { gameId: onlineGameId });
+        }
+        // For local games, you would now make an API call to update scores
         setIsResigned(true);
     };
     const handleChangeSettings = () => {
@@ -482,6 +464,11 @@ const App = () => {
         // but we can still check for local display purposes.
         if (inGame) {
             updateGameStatus();
+            // When game is over, you might want to fetch updated profiles
+            if (gameOverState && (gameMode === 'pvo' || gameMode === 'pvf')) {
+                // Example: fetchUpdatedProfiles(player1.id, player2.id);
+                // This would make API calls to get the latest scores.
+            }
         }
     }, [moveHistory, inGame, updateGameStatus]);
 

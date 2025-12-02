@@ -32,24 +32,24 @@ app.use(express.json()); // for parsing application/json
 
 // Register a new user
 app.post('/api/users/register', async (req, res) => {
-    const { username, email, password } = req.body;
+    const { name, password } = req.body;
 
-    if (!username || !email || !password) {
-        return res.status(400).json({ message: 'Username, email, and password are required.' });
+    if (!name || !password) {
+        return res.status(400).json({ message: 'Name and password are required.' });
     }
 
     try {
         const hashedPassword = await hash(password, 10);
         const [result] = await execute(
-            'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
-            [username, email, hashedPassword]
+            'INSERT INTO users (name, password_hash) VALUES (?, ?)',
+            [name, hashedPassword]
         );
-        res.status(201).json({ id: result.insertId, username, email });
+        res.status(201).json({ id: result.insertId, name });
     } catch (error) {
         console.error('Registration error:', error);
         // Check for duplicate entry
         if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(409).json({ message: 'Username or email already exists.' });
+            return res.status(409).json({ message: 'Name already exists.' });
         }
         res.status(500).json({ message: 'Error registering new user.' });
     }
@@ -59,7 +59,7 @@ app.post('/api/users/register', async (req, res) => {
 app.get('/api/users/ranking', async (req, res) => {
     try {
         const [users] = await query(
-            'SELECT id, username, score FROM users ORDER BY score DESC LIMIT 100'
+            'SELECT id, name, avatar, ranking, wins, losses, draws FROM users ORDER BY wins DESC LIMIT 100'
         );
         res.json(users);
     } catch (error) {
@@ -68,6 +68,29 @@ app.get('/api/users/ranking', async (req, res) => {
     }
 });
 
+// Get a single user's profile
+app.get('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [users] = await query('SELECT id, name, avatar, ranking, wins, losses, draws FROM users WHERE id = ?', [id]);
+        if (users.length === 0) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+        // Reformat score to match client structure
+        const user = users[0];
+        const userProfile = {
+            id: user.id,
+            name: user.name,
+            avatar: user.avatar,
+            ranking: user.ranking,
+            score: { wins: user.wins, losses: user.losses, draws: user.draws }
+        };
+        res.json(userProfile);
+    } catch (error) {
+        console.error(`Error fetching user ${id}:`, error);
+        res.status(500).json({ message: 'Error fetching user profile.' });
+    }
+});
 // --- Socket.IO Real-time Logic ---
 
 const activeGames = {}; // In-memory store for active games
@@ -212,10 +235,29 @@ io.on('connection', (socket) => {
 
         if (resigningPlayerColor) {
             const winner = resigningPlayerColor === 'w' ? 'b' : 'w';
+            const loser = resigningPlayerColor;
             const reason = `${gameRoom.players[resigningPlayerColor].name} resigned.`;
+
+            // Update scores in the database
+            const winnerId = gameRoom.players[winner]?.dbId; // Assuming you store dbId on player object
+            const loserId = gameRoom.players[loser]?.dbId;
+
+            if (winnerId && loserId) {
+                Promise.all([
+                    execute('UPDATE users SET wins = wins + 1 WHERE id = ?', [winnerId]),
+                    execute('UPDATE users SET losses = losses + 1 WHERE id = ?', [loserId]),
+                    // Also update the game status in the 'games' table
+                    // execute('UPDATE games SET status = ?, winner_id = ? WHERE id = ?', ['completed', winnerId, gameId])
+                ]).catch(err => {
+                    console.error("Error updating scores on resignation:", err);
+                });
+            }
+
             // Notify both players in the room about the resignation
             io.to(gameId).emit('gameOver', { winner, reason });
-            delete activeGames[gameId]; // Clean up the game
+            
+            // It's better to clean up after a small delay to ensure messages are sent
+            setTimeout(() => delete activeGames[gameId], 5000);
         }
     });
 
