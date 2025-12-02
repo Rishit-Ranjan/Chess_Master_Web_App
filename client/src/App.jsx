@@ -94,6 +94,27 @@ const App = () => {
             b: playerColor === 'b' ? player1 : player2
         };
     }, [player1, player2, playerColor, gameMode]);
+
+    // Calculate captured pieces
+    const capturedPieces = useMemo(() => {
+        const captured = { w: [], b: [] };
+        // We need verbose history to see captured pieces
+        const history = game.history({ verbose: true });
+
+        for (const move of history) {
+            if (move.captured) {
+                // If White captured a piece, it goes to White's captured list (showing Black pieces)
+                if (move.color === 'w') {
+                    captured.w.push(`b${move.captured}`);
+                } else {
+                    // If Black captured a piece, it goes to Black's captured list (showing White pieces)
+                    captured.b.push(`w${move.captured}`);
+                }
+            }
+        }
+        return captured;
+    }, [game]);
+
     const savePlayerProfile = useCallback((profile) => {
         try {
             localStorage.setItem(PLAYER_PROFILE_KEY, JSON.stringify(profile));
@@ -560,7 +581,7 @@ const App = () => {
             <main className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
                 {/* Left Panel: Player Info & Controls */}
                 <div className="lg:w-1/4 flex flex-col gap-4 order-2 lg:order-1">
-                    <PlayerInfo player={players.b} color="b" isTurn={game.turn() === 'b'} />
+                    <PlayerInfo player={players.b} color="b" isTurn={game.turn() === 'b'} capturedPieces={capturedPieces.b} />
 
                     <div className="flex-grow flex flex-col gap-4 p-5 bg-gray-900/60 backdrop-blur-xl border border-white/5 rounded-2xl shadow-xl">
                         <GameStatus turn={game.turn()} isCheck={game.inCheck()} isGameOver={!!gameOverState} players={players} />
@@ -568,7 +589,7 @@ const App = () => {
                         <GameControls onNewRound={handleNewRound} onChangeSettings={handleChangeSettings} onUndoMove={handleUndoMove} onResign={handleResign} isUndoPossible={moveHistory.length > 0} isGameOver={!!gameOverState} />
                     </div>
 
-                    <PlayerInfo player={players.w} color="w" isTurn={game.turn() === 'w'} />
+                    <PlayerInfo player={players.w} color="w" isTurn={game.turn() === 'w'} capturedPieces={capturedPieces.w} />
                 </div>
 
                 {/* Center: Chessboard */}
@@ -589,8 +610,8 @@ const App = () => {
                 <div className="lg:w-1/4 flex flex-col order-3 h-[600px] lg:h-auto">
                     <MoveHistory moves={moveHistory} />
                 </div>
-            </main>
-        </div>
+            </main >
+        </div >
     );
 };
 export default App;

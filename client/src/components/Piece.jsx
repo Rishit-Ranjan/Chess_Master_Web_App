@@ -1,5 +1,5 @@
 import React from 'react';
-const pieceToSvg = {
+export const pieceToSvg = {
     'wk': 'https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg',
     'wq': 'https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg',
     'wr': 'https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.svg',
@@ -17,7 +17,7 @@ const PieceComponent = ({ piece }) => {
     const pieceKey = `${piece.color}${piece.type}`;
     const svgUrl = pieceToSvg[pieceKey];
     return (<div className="w-full h-full p-1 z-10 select-none pointer-events-none">
-        <img src={svgUrl} alt={`${piece.color} ${piece.type}`} className="w-full h-full object-contain drop-shadow-lg"/>
+        <img src={svgUrl} alt={`${piece.color} ${piece.type}`} className="w-full h-full object-contain drop-shadow-lg" />
     </div>);
 };
 export default PieceComponent;

@@ -1,6 +1,6 @@
-import React from 'react';
+import { pieceToSvg } from './Piece';
 
-const PlayerInfo = ({ player, color, isTurn }) => {
+const PlayerInfo = ({ player, color, isTurn, capturedPieces = [] }) => {
     const colorName = color === 'w' ? 'White' : 'Black';
     // Use a gradient border for the active turn
     const activeClass = isTurn
@@ -27,6 +27,17 @@ const PlayerInfo = ({ player, color, isTurn }) => {
                     <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{colorName}</p>
                 </div>
             </div>
+
+            {/* Captured Pieces */}
+            {capturedPieces.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1 bg-black/20 p-2 rounded-lg min-h-[32px]">
+                    {capturedPieces.map((pieceKey, index) => (
+                        <div key={index} className="w-6 h-6">
+                            <img src={pieceToSvg[pieceKey]} alt={pieceKey} className="w-full h-full object-contain opacity-90" />
+                        </div>
+                    ))}
+                </div>
+            )}
 
             <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-gray-700/50">
                 <div className="text-center">
