@@ -2,8 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 const { hash } = bcrypt;
-import db from './db.js';
-const { execute, query } = db;
+import dbPool from './db.js';
 import { resolve, dirname } from 'path';
 import { createServer } from 'http';
 import { Server } from "socket.io";
@@ -40,7 +39,7 @@ app.post('/api/users/register', async (req, res) => {
 
     try {
         const hashedPassword = await hash(password, 10);
-        const [result] = await execute(
+        const [result] = await dbPool.execute(
             'INSERT INTO users (name, password_hash) VALUES (?, ?)',
             [name, hashedPassword]
         );
@@ -58,7 +57,7 @@ app.post('/api/users/register', async (req, res) => {
 // Get user rankings (top 100 by score)
 app.get('/api/users/ranking', async (req, res) => {
     try {
-        const [users] = await query(
+        const [users] = await dbPool.query(
             'SELECT id, name, avatar, ranking, wins, losses, draws FROM users ORDER BY wins DESC LIMIT 100'
         );
         res.json(users);
@@ -72,7 +71,7 @@ app.get('/api/users/ranking', async (req, res) => {
 app.get('/api/users/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const [users] = await query('SELECT id, name, avatar, ranking, wins, losses, draws FROM users WHERE id = ?', [id]);
+        const [users] = await dbPool.query('SELECT id, name, avatar, ranking, wins, losses, draws FROM users WHERE id = ?', [id]);
         if (users.length === 0) {
             return res.status(404).json({ message: 'User not found.' });
         }
@@ -245,10 +244,10 @@ io.on('connection', (socket) => {
 
             if (winnerId && loserId) {
                 Promise.all([
-                    execute('UPDATE users SET wins = wins + 1 WHERE id = ?', [winnerId]),
-                    execute('UPDATE users SET losses = losses + 1 WHERE id = ?', [loserId]),
+                    dbPool.execute('UPDATE users SET wins = wins + 1 WHERE id = ?', [winnerId]),
+                    dbPool.execute('UPDATE users SET losses = losses + 1 WHERE id = ?', [loserId]),
                     // Also update the game status in the 'games' table
-                    // execute('UPDATE games SET status = ?, winner_id = ? WHERE id = ?', ['completed', winnerId, gameId])
+                    // dbPool.execute('UPDATE games SET status = ?, winner_id = ? WHERE id = ?', ['completed', winnerId, gameId])
                 ]).catch(err => {
                     console.error("Error updating scores on resignation:", err);
                 });
@@ -274,18 +273,18 @@ io.on('connection', (socket) => {
             if (outcome === 'win' && winnerId && loserId) {
                 console.log(`Updating scores for game ${gameId}: Winner ${winnerId}, Loser ${loserId}`);
                 await Promise.all([
-                    execute('UPDATE users SET wins = wins + 1 WHERE id = ?', [winnerId]),
-                    execute('UPDATE users SET losses = losses + 1 WHERE id = ?', [loserId]),
+                    dbPool.execute('UPDATE users SET wins = wins + 1 WHERE id = ?', [winnerId]),
+                    dbPool.execute('UPDATE users SET losses = losses + 1 WHERE id = ?', [loserId]),
                 ]);
             } else if (outcome === 'draw' && winnerId && loserId) {
                 console.log(`Updating scores for game ${gameId}: Draw between ${winnerId} and ${loserId}`);
                 await Promise.all([
-                    execute('UPDATE users SET draws = draws + 1 WHERE id = ?', [winnerId]),
-                    execute('UPDATE users SET draws = draws + 1 WHERE id = ?', [loserId]),
+                    dbPool.execute('UPDATE users SET draws = draws + 1 WHERE id = ?', [winnerId]),
+                    dbPool.execute('UPDATE users SET draws = draws + 1 WHERE id = ?', [loserId]),
                 ]);
             }
             // Optionally update the 'games' table status
-            // await execute('UPDATE games SET status = ?, winner_id = ? WHERE id = ?', ['completed', winnerId, gameId]);
+            // await dbPool.execute('UPDATE games SET status = ?, winner_id = ? WHERE id = ?', ['completed', winnerId, gameId]);
 
         } catch (error) {
             console.error('Error updating scores on game over:', error);

@@ -1,6 +1,10 @@
-const mysql = require('mysql2');
-const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+import mysql from 'mysql2/promise';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: resolve(__dirname, '.env') });
 
 // Create a connection pool
 const pool = mysql.createPool({
@@ -13,5 +17,5 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Export a promise-based query function
-module.exports = pool.promise();
+// Export the promise-based pool
+export default pool;

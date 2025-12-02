@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getUserProfile, updateUserProfile } from '../services/apiService.js';
+import { getUserProfile, updateUserProfile, registerUser } from '../services/apiService.js';
 // Function to create a simple, deterministic SVG avatar from a name
 const generateLocalAvatar = (name) => {
     const getInitials = (nameStr) => {
@@ -37,6 +37,7 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
     const [difficulty, setDifficulty] = useState('medium');
     const [humanPlayerColor, setHumanPlayerColor] = useState('w');
     const [playerName, setPlayerName] = useState(playerProfile.name);
+    const [password, setPassword] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     // State to control the visibility of the profile modal
     const [isProfileVisible, setIsProfileVisible] = useState(!playerProfile.id); // Show profile modal if no user is "logged in"
@@ -48,22 +49,12 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
 
     // Simulate login/profile fetch
     useEffect(() => {
-        // For this example, we'll use a hardcoded user ID.
-        // In a real app, you'd get this from a login process.
-        const LOGGED_IN_USER_ID = 1; // <-- Replace with real login later
-
-        if (LOGGED_IN_USER_ID && !playerProfile.id) {
-            getUserProfile(LOGGED_IN_USER_ID)
-                .then(response => {
-                    setPlayerProfile(response.data);
-                })
-                .catch(error => {
-                    console.error("Failed to fetch user profile:", error);
-                    // If user not found, prompt for creation/login
-                    setIsProfileVisible(true);
-                });
+        // This effect now only ensures the modal is visible if no user is loaded.
+        // The hardcoded fetch has been removed in favor of user registration.
+        if (!playerProfile.id) {
+            setIsProfileVisible(true);
         }
-    }, [playerProfile.id, setPlayerProfile]);
+    }, [playerProfile.id]);
 
     const handleStart = () => {
         onPlayerNameChange(playerName);
@@ -147,6 +138,29 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                 }).catch(err => {
                     alert("Failed to update name on server.");
                 });
+        }
+    };
+
+    const handleRegister = async () => {
+        if (!playerName.trim() || !password.trim()) {
+            alert('Please enter a name and password to register.');
+            return;
+        }
+        try {
+            const registerResponse = await registerUser({ name: playerName, password });
+            const newUserId = registerResponse.data.id;
+
+            if (newUserId) {
+                // After successful registration, fetch the full new profile
+                const profileResponse = await getUserProfile(newUserId);
+                setPlayerProfile(profileResponse.data);
+                setIsProfileVisible(false); // Close the modal
+                alert('Registration successful!');
+            }
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || 'An error occurred during registration.';
+            console.error("Registration failed:", error);
+            alert(`Registration failed: ${errorMessage}`);
         }
     };
 
@@ -302,13 +316,29 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                                     </div>
                                 </div>
                                 <div className="flex-grow space-y-2">
-                                    <input
-                                        type="text"
-                                        value={playerName}
-                                        onChange={(e) => setPlayerName(e.target.value)} onBlur={handleNameBlur}
-                                        className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none text-lg font-bold"
-                                        placeholder="Enter your name"
-                                    />
+                                    <div>
+                                        <label className="text-xs text-gray-400">Name</label>
+                                        <input
+                                            type="text"
+                                            value={playerName}
+                                            onChange={(e) => setPlayerName(e.target.value)}
+                                            onBlur={handleNameBlur}
+                                            className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none text-base font-bold"
+                                            placeholder="Enter your name"
+                                        />
+                                    </div>
+                                    {!playerProfile.id && (
+                                        <div>
+                                            <label className="text-xs text-gray-400">Password</label>
+                                            <input
+                                                type="password"
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                                                placeholder="Create a password"
+                                            />
+                                        </div>
+                                    )}
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm text-gray-400">Rank: <span className="font-bold text-indigo-400">{playerProfile.rank ?? 'Unranked'}</span></span>
                                         <button
@@ -336,6 +366,14 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                                 </div>
                             </div>
                         </div>
+                        {!playerProfile.id && (
+                            <button
+                                onClick={handleRegister}
+                                className="w-full mt-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-green-600/20 transition-all"
+                            >
+                                Register & Login
+                            </button>
+                        )}
                     </div>
                 </div>
             )}

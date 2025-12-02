@@ -27,3 +27,12 @@ export const getUserProfile = (userId) => {
 export const updateUserProfile = (userId, profileData) => {
     return apiClient.put(`/users/${userId}`, profileData);
 };
+
+/**
+ * Registers a new user.
+ * @param {Object} userData The user's data (e.g., { name, password }).
+ * @returns {Promise<Object>} The server response.
+ */
+export const registerUser = (userData) => {
+    return apiClient.post('/users/register', userData);
+};

@@ -82,11 +82,16 @@ const App = () => {
     const [inGame, setInGame] = useState(false);
     // Player profiles
     const [isSearching, setIsSearching] = useState(false);
+    // --- Online Game State ---
+    const [onlineGameId, setOnlineGameId] = useState(null);
+    const [createdGameId, setCreatedGameId] = useState(null); // For PVF creator
+
     const [player1, setPlayer1] = useState(initialPlayer);
     const [player2, setPlayer2] = useState({ name: 'Player 2', avatar: P2_AVATAR_SVG, score: { wins: 0, losses: 0, draws: 0 } });
     const players = useMemo(() => {
         // For online games, player data comes from the server
-        if (gameMode === 'pvo') {
+        // In online modes, player data is set when the game starts.
+        if (gameMode === 'pvo' || gameMode === 'pvf') {
             return { w: player1, b: player2 };
         }
         return {
@@ -323,10 +328,6 @@ const App = () => {
     const handleAvatarChange = useCallback((newAvatar) => {
         setPlayer1(p => ({ ...p, avatar: newAvatar }));
     }, []);
-
-    // --- Online Game State ---
-    const [onlineGameId, setOnlineGameId] = useState(null);
-    const [createdGameId, setCreatedGameId] = useState(null); // For PVF creator
 
     // Effect to trigger AI move
     useEffect(() => {
