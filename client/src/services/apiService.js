@@ -27,7 +27,3 @@ export const getUserProfile = (userId) => {
 export const updateUserProfile = (userId, profileData) => {
     return apiClient.put(`/users/${userId}`, profileData);
 };
-
-// You can add other API functions here, like:
-// export const registerUser = (userData) => apiClient.post('/users/register', userData);
-// export const loginUser = (credentials) => apiClient.post('/users/login', credentials);
