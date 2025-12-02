@@ -79,6 +79,7 @@ const App = () => {
     const [isResigned, setIsResigned] = useState(false);
     const [checkmateHighlight, setCheckmateHighlight] = useState(null);
     const [lastMove, setLastMove] = useState(null);
+    const [theme, setTheme] = useState('dark');
     const [inGame, setInGame] = useState(false);
     // Player profiles
     const [isSearching, setIsSearching] = useState(false);
@@ -267,15 +268,7 @@ const App = () => {
         }
     };
     const handleNewRound = () => {
-        const newGame = new Chess();
-        setGame(newGame);
-        setMoveHistory([]);
-        setSelectedSquare(null);
-        setPossibleMoves([]);
-        setGameOverState(null);
-        setLastMove(null);
-        setCheckmateHighlight(null);
-        setIsResigned(false);
+        resetGame();
     };
     const handleUndoMove = () => {
         if (gameOverState || moveHistory.length === 0)
@@ -314,12 +307,24 @@ const App = () => {
     };
     const handleChangeSettings = () => {
         setInGame(false);
-        handleNewRound(); // Reset game state when going back to settings
+        resetGame(); // Reset only the game state, not the player
         // If we were searching for a match, cancel it
         if (isSearching) {
             emitSocket('cancelFindMatch');
             setIsSearching(false);
         }
+    };
+
+    const resetGame = () => {
+        const newGame = new Chess();
+        setGame(newGame);
+        setMoveHistory([]);
+        setSelectedSquare(null);
+        setPossibleMoves([]);
+        setGameOverState(null);
+        setLastMove(null);
+        setCheckmateHighlight(null);
+        setIsResigned(false);
     };
 
     const handlePlayerNameChange = useCallback((newName) => {
@@ -328,6 +333,17 @@ const App = () => {
     const handleAvatarChange = useCallback((newAvatar) => {
         setPlayer1(p => ({ ...p, avatar: newAvatar }));
     }, []);
+
+    const toggleTheme = useCallback(() => {
+        setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    }, []);
+
+    useEffect(() => {
+        const root = window.document.documentElement;
+        root.classList.remove(theme === 'dark' ? 'light' : 'dark');
+        root.classList.add(theme);
+    }, [theme]);
+
 
     // Effect to trigger AI move
     useEffect(() => {
@@ -468,7 +484,7 @@ const App = () => {
         if (mode === 'pva') {
             const aiName = 'Local AI';
             setInGame(true);
-            handleNewRound();
+            resetGame();
             setPlayer2({
                 name: aiName,
                 avatar: AI_AVATAR_SVG,
@@ -542,13 +558,13 @@ const App = () => {
 
     if (!inGame && !isSearching) {
         return (
-            <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-[#0a0a0a] to-black text-white flex flex-col items-center justify-center p-4">
+            <div className="min-h-screen bg-gray-100 dark:bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-[#0a0a0a] to-black text-gray-800 dark:text-white flex flex-col items-center justify-center p-4">
                 <GameSetup onGameStart={handleGameStart} playerProfile={player1} setPlayerProfile={setPlayer1} onPlayerNameChange={handlePlayerNameChange} onAvatarChange={handleAvatarChange} />
             </div>
         );
     }
     return (
-        <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-[#0a0a0a] to-black text-white flex flex-col items-center justify-center p-2 sm:p-4 font-sans">
+        <div className="min-h-screen bg-gray-100 dark:bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-[#0a0a0a] to-black text-gray-800 dark:text-white flex flex-col items-center justify-center p-2 sm:p-4 font-sans">
             {gameOverState && <GameOverModal state={gameOverState} onNewGame={handleNewRound} players={players} />}
             {promotionData && <PromotionModal color={game.turn()} onSelect={handlePromotionSelect} />}
 
@@ -557,10 +573,10 @@ const App = () => {
                 <div className="lg:w-1/4 flex flex-col gap-2 order-3 lg:order-2">
                     <PlayerInfo player={players.b} color="b" isTurn={game.turn() === 'b'} capturedPieces={capturedPieces.b} />
 
-                    <div className="flex-grow flex flex-col gap-4 p-5 bg-gray-900/60 backdrop-blur-xl border border-white/5 rounded-2xl shadow-xl">
+                    <div className="flex-grow flex flex-col gap-4 p-5 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl border border-gray-200 dark:border-white/5 rounded-2xl shadow-xl">
                         <GameStatus turn={game.turn()} isCheck={game.inCheck()} isGameOver={!!gameOverState} players={players} />
-                        <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent my-2"></div>
-                        <GameControls onNewRound={handleNewRound} onChangeSettings={handleChangeSettings} onUndoMove={handleUndoMove} onResign={handleResign} isUndoPossible={moveHistory.length > 0} isGameOver={!!gameOverState} />
+                        <div className="h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-700 to-transparent my-2"></div>
+                        <GameControls onNewRound={handleNewRound} onChangeSettings={handleChangeSettings} onUndoMove={handleUndoMove} onResign={handleResign} isUndoPossible={moveHistory.length > 0} isGameOver={!!gameOverState} onToggleTheme={toggleTheme} />
                     </div>
 
                     <PlayerInfo player={players.w} color="w" isTurn={game.turn() === 'w'} capturedPieces={capturedPieces.w} />
@@ -569,13 +585,13 @@ const App = () => {
                 {/* Center: Chessboard */}
                 <div className="flex-grow flex justify-center items-center order-1 lg:order-2 relative">
                     {isAiThinking && (
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-lg">
+                        <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-lg">
                             <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 animate-pulse">
                                 {player2.name} is thinking...
                             </div>
                         </div>
                     )}
-                    <div className="p-1 rounded-lg bg-gradient-to-br from-gray-700 to-gray-900 shadow-2xl">
+                    <div className="p-1 rounded-lg bg-gradient-to-br from-gray-400 to-gray-600 dark:from-gray-700 dark:to-gray-900 shadow-2xl">
                         <Chessboard board={game.board()} onSquareClick={handleSquareClick} selectedSquare={selectedSquare} possibleMoves={possibleMoves.map(m => m.to)} playerColor={gameMode === 'pvp' ? game.turn() : playerColor} lastMove={lastMove} checkmateHighlight={checkmateHighlight} />
                     </div>
                 </div>

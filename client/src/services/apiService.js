@@ -25,7 +25,7 @@ export const getUserProfile = (userId) => {
  * @returns {Promise<Object>} The server response.
  */
 export const updateUserProfile = (userId, profileData) => {
-    return apiClient.put(`/users/${userId}`, profileData);
+        return apiClient.put(`/users/${userId}`, profileData);
 };
 
 /**
@@ -45,3 +45,4 @@ export const registerUser = (userData) => {
 export const loginUser = (credentials) => {
     return apiClient.post('/users/login', credentials);
 };
+

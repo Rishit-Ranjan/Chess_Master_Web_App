@@ -182,7 +182,7 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
     };
 
     return (
-        <div className="bg-gray-900/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-lg text-white border border-gray-700/50">
+        <div className="bg-white/80 dark:bg-gray-900/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-lg text-gray-800 dark:text-white border border-gray-300 dark:border-gray-700/50">
             <div className="relative text-center mb-8">
                 <h1 className="text-5xl font-extrabold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent mb-2">Chess Master</h1>
                 <p className="text-gray-400">Choose your battleground</p>
@@ -191,7 +191,7 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                     <button onClick={() => setIsProfileVisible(true)} className="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-500/50 hover:border-indigo-500 transition-all shadow-lg shadow-indigo-500/20">
                         {playerProfile.avatar ? (
                             <img src={playerProfile.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                        ) : (
+                        ) : ( // Default icon for profile button
                             <div className="w-full h-full bg-gray-700 flex items-center justify-center">
                                 <span className="text-xl">👤</span>
                             </div>
@@ -214,19 +214,19 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                                 key={mode.id}
                                 onClick={() => setGameMode(mode.id)}
                                 className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 ${gameMode === mode.id
-                                        ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-500/30 transform scale-105'
-                                        : 'bg-gray-800 border-gray-700 hover:bg-gray-750 hover:border-gray-600'
+                                        ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-500/30 transform scale-105 text-white'
+                                        : 'bg-gray-200 dark:bg-gray-800 border-gray-300 dark:border-gray-700 hover:bg-gray-300 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-600'
                                     }`}
                             >
                                 <span className="text-2xl mb-1">{mode.icon}</span>
-                                <span className="text-xs font-bold">{mode.label}</span>
+                                <span className={`text-xs font-bold ${gameMode === mode.id ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>{mode.label}</span>
                             </button>
                         ))}
                     </div>
                 </div>
 
                 {/* Mode Specific Options */}
-                <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50 min-h-[120px] flex flex-col justify-center">
+                <div className="bg-gray-200/50 dark:bg-gray-800/30 rounded-xl p-4 border border-gray-300/50 dark:border-gray-700/50 min-h-[120px] flex flex-col justify-center">
                     {gameMode === 'pva' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="flex items-center justify-between">
@@ -237,7 +237,7 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                                             key={d}
                                             onClick={() => setDifficulty(d)}
                                             className={`px-3 py-1 rounded-md text-xs font-bold capitalize transition-all ${difficulty === d
-                                                    ? (d === 'easy' ? 'bg-green-600 text-white' : d === 'medium' ? 'bg-yellow-600 text-white' : 'bg-red-600 text-white')
+                                                    ? (d === 'easy' ? 'bg-green-600 text-white' : d === 'medium' ? 'bg-yellow-500 text-white' : 'bg-red-600 text-white')
                                                     : 'text-gray-400 hover:text-white'
                                                 }`}
                                         >
@@ -281,7 +281,7 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                                         value={joinGameId}
                                         onChange={(e) => setJoinGameId(e.target.value)}
                                         placeholder="Enter Game Code"
-                                        className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white text-center tracking-widest placeholder-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        className="w-full bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-gray-800 dark:text-white text-center tracking-widest placeholder-gray-500 dark:placeholder-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none"
                                     />
                                 </div>
                             )}
@@ -301,8 +301,8 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
 
             {/* Profile Modal */}
             {isProfileVisible && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setIsProfileVisible(false)}>
-                    <div className="relative w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 p-6 animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setIsProfileVisible(false)}>
+                    <div className="relative w-full max-w-md bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-2xl shadow-2xl border border-gray-300 dark:border-gray-700 p-6 animate-fadeIn" onClick={(e) => e.stopPropagation()}>
                         <button
                             onClick={() => setIsProfileVisible(false)}
                             className="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl"
@@ -312,11 +312,11 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                         </button>
                         
                         {!playerProfile.id && (
-                            <div className="flex bg-gray-900 rounded-lg p-1 mb-6">
-                                <button onClick={() => setAuthMode('register')} className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${authMode === 'register' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>
+                            <div className="flex bg-gray-200 dark:bg-gray-900 rounded-lg p-1 mb-6">
+                                <button onClick={() => setAuthMode('register')} className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${authMode === 'register' ? 'bg-indigo-600 text-white shadow' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white'}`}>
                                     Register
                                 </button>
-                                <button onClick={() => setAuthMode('login')} className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${authMode === 'login' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>
+                                <button onClick={() => setAuthMode('login')} className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${authMode === 'login' ? 'bg-indigo-600 text-white shadow' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white'}`}>
                                     Login
                                 </button>
                             </div>
@@ -325,16 +325,16 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                         <h2 className="text-2xl font-bold text-center text-indigo-400 mb-6">{playerProfile.id ? 'Your Profile' : (authMode === 'register' ? 'Create Your Profile' : 'Login to Your Profile')}</h2>
 
                         {/* Profile Details (moved from main GameSetup) */}
-                        <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                        <div className="p-4 bg-gray-100/50 dark:bg-gray-800/50 rounded-xl border border-gray-300 dark:border-gray-700">
                             <div className="flex items-center gap-4 mb-4">
                                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/png, image/jpeg, image/webp" className="hidden" />
                                 <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-indigo-500/50 group-hover:border-indigo-500 transition-all shadow-lg shadow-indigo-500/20 flex-shrink-0 group">
                                     <button onClick={handleAvatarClick} className="w-full h-full">
                                         {isGenerating ? (
-                                            <div className="w-full h-full flex items-center justify-center bg-gray-800 text-xs text-indigo-400 animate-pulse">Generating...</div>
+                                            <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-800 text-xs text-indigo-400 animate-pulse">Generating...</div>
                                         ) : playerProfile.avatar ? (
                                             <img src={playerProfile.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                                        ) : (
+                                        ) : ( // Default icon for modal avatar
                                             <div className="w-full h-full bg-gray-700 flex items-center justify-center">
                                                 <span className="text-2xl">👤</span>
                                             </div>
@@ -352,7 +352,7 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                                             value={playerName}
                                             onChange={(e) => setPlayerName(e.target.value)}
                                             onBlur={handleNameBlur}
-                                            className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none text-base font-bold"
+                                            className="w-full bg-gray-200 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-gray-800 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none text-base font-bold"
                                             placeholder="Enter your name"
                                         />
                                     </div>
@@ -362,7 +362,7 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                                             type="password"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
-                                            className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                                            className="w-full bg-gray-200 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-gray-800 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
                                             placeholder={authMode === 'register' ? "Create a password" : "Enter your password"}
                                         />
                                     </div>
@@ -378,12 +378,12 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                                     </div>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-700/50">
+                            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-300/50 dark:border-gray-700/50">
                                 <div className="text-center">
                                     <div className="text-xs text-gray-500 uppercase">Wins</div>
                                     <div className="font-bold text-green-400">{playerProfile.score?.wins ?? 0}</div>
                                 </div>
-                                <div className="text-center border-l border-r border-gray-700/50">
+                                <div className="text-center border-l border-r border-gray-300/50 dark:border-gray-700/50">
                                     <div className="text-xs text-gray-500 uppercase">Losses</div>
                                     <div className="font-bold text-red-400">{playerProfile.score?.losses ?? 0}</div>
                                 </div>

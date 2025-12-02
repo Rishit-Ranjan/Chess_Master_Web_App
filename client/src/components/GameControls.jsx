@@ -1,6 +1,6 @@
 import React from 'react';
 
-const GameControls = ({ onNewRound, onChangeSettings, onUndoMove, onResign, isUndoPossible, isGameOver }) => {
+const GameControls = ({ onNewRound, onChangeSettings, onUndoMove, onResign, isUndoPossible, isGameOver, onToggleTheme }) => {
     const btnBase = "w-full py-2.5 px-4 rounded-lg font-bold text-sm transition-all duration-200 transform hover:-translate-y-0.5 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none";
 
     return (
@@ -8,7 +8,7 @@ const GameControls = ({ onNewRound, onChangeSettings, onUndoMove, onResign, isUn
             <div className="grid grid-cols-2 gap-3">
                 <button
                     onClick={onUndoMove}
-                    disabled={!isUndoPossible || isGameOver}
+                    disabled={!isUndoPossible || isGameOver} // Ensure this is a boolean
                     className={`${btnBase} bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600`}
                 >
                     Undo
@@ -34,6 +34,12 @@ const GameControls = ({ onNewRound, onChangeSettings, onUndoMove, onResign, isUn
                 className={`${btnBase} bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-indigo-900/20`}
             >
                 Settings
+            </button>
+            <button
+                onClick={onToggleTheme}
+                className={`${btnBase} bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600`}
+            >
+                Toggle Theme
             </button>
         </div>
     );

@@ -10,12 +10,12 @@ const MoveHistory = ({ moves }) => {
     useEffect(scrollToBottom, [moves]);
 
     return (
-        <div className="mt-4 flex-grow flex flex-col bg-gray-900/50 backdrop-blur-md rounded-xl border border-gray-700/50 overflow-hidden shadow-lg h-full">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider p-4 border-b border-gray-700/50 bg-gray-800/30">
+        <div className="mt-4 flex-grow flex flex-col bg-white/50 dark:bg-gray-900/50 backdrop-blur-md rounded-xl border border-gray-300/50 dark:border-gray-700/50 overflow-hidden shadow-lg h-full">
+            <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider p-4 border-b border-gray-300/50 dark:border-gray-700/50 bg-gray-200/30 dark:bg-gray-800/30">
                 Move History
             </h3>
 
-            <div className="flex-grow overflow-y-auto p-2 custom-scrollbar">
+            <div className="flex-grow overflow-y-auto p-2 custom-scrollbar text-gray-800 dark:text-white">
                 {moves.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-gray-500 text-sm italic">
                         <span>No moves yet</span>
@@ -37,10 +37,10 @@ const MoveHistory = ({ moves }) => {
                                 const blackMove = moves[index + 1] || '';
 
                                 return (
-                                    <tr key={moveNum} className="border-b border-gray-800/50 hover:bg-white/5 transition-colors">
+                                    <tr key={moveNum} className="border-b border-gray-200/50 dark:border-gray-800/50 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                                         <td className="px-3 py-2 text-gray-500 font-mono text-xs">{moveNum}.</td>
-                                        <td className="px-3 py-2 font-medium text-gray-200">{whiteMove}</td>
-                                        <td className="px-3 py-2 font-medium text-gray-200">{blackMove}</td>
+                                        <td className="px-3 py-2 font-medium text-gray-700 dark:text-gray-200">{whiteMove}</td>
+                                        <td className="px-3 py-2 font-medium text-gray-700 dark:text-gray-200">{blackMove}</td>
                                     </tr>
                                 );
                             })}
