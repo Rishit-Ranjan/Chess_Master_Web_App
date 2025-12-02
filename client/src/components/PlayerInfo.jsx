@@ -43,15 +43,15 @@ const PlayerInfo = ({ player, color, isTurn, capturedPieces = [] }) => {
             <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-gray-700/50">
                 <div className="text-center">
                     <div className="text-xs text-gray-500 uppercase">Wins</div>
-                    <div className="font-bold text-green-400">{player.score.wins}</div>
+                    <div className="font-bold text-green-400">{player.score?.wins ?? 0}</div>
                 </div>
                 <div className="text-center border-l border-gray-700/50">
                     <div className="text-xs text-gray-500 uppercase">Losses</div>
-                    <div className="font-bold text-red-400">{player.score.losses}</div>
+                    <div className="font-bold text-red-400">{player.score?.losses ?? 0}</div>
                 </div>
                 <div className="text-center border-l border-gray-700/50">
                     <div className="text-xs text-gray-500 uppercase">Draws</div>
-                    <div className="font-bold text-gray-400">{player.score.draws}</div>
+                    <div className="font-bold text-gray-400">{player.score?.draws ?? 0}</div>
                 </div>
             </div>
         </div>
