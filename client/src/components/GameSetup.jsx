@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getUserProfile, updateUserProfile, registerUser } from '../services/apiService.js';
+import { getUserProfile, updateUserProfile, registerUser, loginUser } from '../services/apiService.js';
 // Function to create a simple, deterministic SVG avatar from a name
 const generateLocalAvatar = (name) => {
     const getInitials = (nameStr) => {
@@ -39,6 +39,7 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
     const [playerName, setPlayerName] = useState(playerProfile.name);
     const [password, setPassword] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [authMode, setAuthMode] = useState('register'); // 'register' or 'login'
     // State to control the visibility of the profile modal
     const [isProfileVisible, setIsProfileVisible] = useState(!playerProfile.id); // Show profile modal if no user is "logged in"
     const fileInputRef = useRef(null);
@@ -50,7 +51,6 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
     // Simulate login/profile fetch
     useEffect(() => {
         // This effect now only ensures the modal is visible if no user is loaded.
-        // The hardcoded fetch has been removed in favor of user registration.
         if (!playerProfile.id) {
             setIsProfileVisible(true);
         }
@@ -161,6 +161,23 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
             const errorMessage = error.response?.data?.message || 'An error occurred during registration.';
             console.error("Registration failed:", error);
             alert(`Registration failed: ${errorMessage}`);
+        }
+    };
+
+    const handleLogin = async () => {
+        if (!playerName.trim() || !password.trim()) {
+            alert('Please enter a name and password to log in.');
+            return;
+        }
+        try {
+            const response = await loginUser({ name: playerName, password });
+            setPlayerProfile(response.data);
+            setIsProfileVisible(false); // Close the modal
+            alert('Login successful!');
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || 'An error occurred during login.';
+            console.error("Login failed:", error);
+            alert(`Login failed: ${errorMessage}`);
         }
     };
 
@@ -293,7 +310,19 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                         >
                             &times;
                         </button>
-                        <h2 className="text-2xl font-bold text-center text-indigo-400 mb-6">Your Profile</h2>
+                        
+                        {!playerProfile.id && (
+                            <div className="flex bg-gray-900 rounded-lg p-1 mb-6">
+                                <button onClick={() => setAuthMode('register')} className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${authMode === 'register' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>
+                                    Register
+                                </button>
+                                <button onClick={() => setAuthMode('login')} className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${authMode === 'login' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>
+                                    Login
+                                </button>
+                            </div>
+                        )}
+
+                        <h2 className="text-2xl font-bold text-center text-indigo-400 mb-6">{playerProfile.id ? 'Your Profile' : (authMode === 'register' ? 'Create Your Profile' : 'Login to Your Profile')}</h2>
 
                         {/* Profile Details (moved from main GameSetup) */}
                         <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
@@ -327,18 +356,16 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                                             placeholder="Enter your name"
                                         />
                                     </div>
-                                    {!playerProfile.id && (
-                                        <div>
-                                            <label className="text-xs text-gray-400">Password</label>
-                                            <input
-                                                type="password"
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
-                                                placeholder="Create a password"
-                                            />
-                                        </div>
-                                    )}
+                                    <div>
+                                        <label className="text-xs text-gray-400">Password</label>
+                                        <input
+                                            type="password"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                                            placeholder={authMode === 'register' ? "Create a password" : "Enter your password"}
+                                        />
+                                    </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm text-gray-400">Rank: <span className="font-bold text-indigo-400">{playerProfile.rank ?? 'Unranked'}</span></span>
                                         <button
@@ -368,10 +395,10 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                         </div>
                         {!playerProfile.id && (
                             <button
-                                onClick={handleRegister}
+                                onClick={authMode === 'register' ? handleRegister : handleLogin}
                                 className="w-full mt-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-green-600/20 transition-all"
                             >
-                                Register & Login
+                                {authMode === 'register' ? 'Register & Login' : 'Login'}
                             </button>
                         )}
                     </div>

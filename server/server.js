@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
-const { hash } = bcrypt;
+const { hash, compare } = bcrypt;
 import dbPool from './db.js';
 import { resolve, dirname } from 'path';
 import { createServer } from 'http';
@@ -51,6 +51,44 @@ app.post('/api/users/register', async (req, res) => {
             return res.status(409).json({ message: 'Name already exists.' });
         }
         res.status(500).json({ message: 'Error registering new user.' });
+    }
+});
+
+// Login an existing user
+app.post('/api/users/login', async (req, res) => {
+    const { name, password } = req.body;
+
+    if (!name || !password) {
+        return res.status(400).json({ message: 'Name and password are required.' });
+    }
+
+    try {
+        // Find user by name
+        const [users] = await dbPool.query('SELECT * FROM users WHERE name = ?', [name]);
+        if (users.length === 0) {
+            return res.status(401).json({ message: 'Invalid credentials.' }); // User not found
+        }
+
+        const user = users[0];
+
+        // Compare password with the stored hash
+        const isMatch = await compare(password, user.password_hash);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Invalid credentials.' }); // Wrong password
+        }
+
+        // On success, return the user's profile (without the password hash)
+        const userProfile = {
+            id: user.id,
+            name: user.name,
+            avatar: user.avatar,
+            ranking: user.ranking,
+            score: { wins: user.wins, losses: user.losses, draws: user.draws }
+        };
+        res.json(userProfile);
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ message: 'Error logging in.' });
     }
 });
 

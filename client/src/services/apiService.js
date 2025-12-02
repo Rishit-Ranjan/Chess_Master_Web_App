@@ -36,3 +36,12 @@ export const updateUserProfile = (userId, profileData) => {
 export const registerUser = (userData) => {
     return apiClient.post('/users/register', userData);
 };
+
+/**
+ * Logs in an existing user.
+ * @param {Object} credentials The user's credentials (e.g., { name, password }).
+ * @returns {Promise<Object>} The user profile data.
+ */
+export const loginUser = (credentials) => {
+    return apiClient.post('/users/login', credentials);
+};
