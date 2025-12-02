@@ -91,6 +91,7 @@ app.get('/api/users/:id', async (req, res) => {
         res.status(500).json({ message: 'Error fetching user profile.' });
     }
 });
+
 // --- Socket.IO Real-time Logic ---
 
 const activeGames = {}; // In-memory store for active games
