@@ -552,9 +552,9 @@ const App = () => {
             {gameOverState && <GameOverModal state={gameOverState} onNewGame={handleNewRound} players={players} />}
             {promotionData && <PromotionModal color={game.turn()} onSelect={handlePromotionSelect} />}
 
-            <main className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
+            <main className="w-full max-w-screen-xl mx-auto flex flex-col lg:flex-row gap-6">
                 {/* Left Panel: Player Info & Controls */}
-                <div className="lg:w-1/4 flex flex-col gap-4 order-2 lg:order-1">
+                <div className="lg:w-1/4 flex flex-col gap-2 order-3 lg:order-2">
                     <PlayerInfo player={players.b} color="b" isTurn={game.turn() === 'b'} capturedPieces={capturedPieces.b} />
 
                     <div className="flex-grow flex flex-col gap-4 p-5 bg-gray-900/60 backdrop-blur-xl border border-white/5 rounded-2xl shadow-xl">
@@ -581,7 +581,7 @@ const App = () => {
                 </div>
 
                 {/* Right Panel: History */}
-                <div className="lg:w-1/4 flex flex-col order-3 h-[600px] lg:h-auto">
+                <div className="lg:w-1/6 flex flex-col order-3 h-[600px] lg:h-auto">
                     <MoveHistory moves={moveHistory} />
                 </div>
             </main >
