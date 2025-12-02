@@ -1,3 +1,4 @@
+import React from 'react';
 import Square from './Square';
 const Chessboard = ({ board, onSquareClick, selectedSquare, possibleMoves, playerColor, lastMove, checkmateHighlight }) => {
     const boardRepresentation = playerColor === 'w'

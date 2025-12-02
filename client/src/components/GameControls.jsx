@@ -8,8 +8,8 @@ const GameControls = ({ onNewRound, onChangeSettings, onUndoMove, onResign, isUn
             <div className="grid grid-cols-2 gap-3">
                 <button
                     onClick={onUndoMove}
-                    disabled={!isUndoPossible || isGameOver} // Ensure this is a boolean
-                    className={`${btnBase} bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600`}
+                    disabled={!isUndoPossible || isGameOver}
+                    className={`${btnBase} bg-gray-200 hover:bg-gray-300 text-gray-700 border border-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 dark:border-gray-600`}
                 >
                     Undo
                 </button>
@@ -37,7 +37,7 @@ const GameControls = ({ onNewRound, onChangeSettings, onUndoMove, onResign, isUn
             </button>
             <button
                 onClick={onToggleTheme}
-                className={`${btnBase} bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600`}
+                className={`${btnBase} bg-gray-200 hover:bg-gray-300 text-gray-700 border border-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 dark:border-gray-600`}
             >
                 Toggle Theme
             </button>

@@ -559,7 +559,7 @@ const App = () => {
     if (!inGame && !isSearching) {
         return (
             <div className="min-h-screen bg-gray-100 dark:bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-[#0a0a0a] to-black text-gray-800 dark:text-white flex flex-col items-center justify-center p-4">
-                <GameSetup onGameStart={handleGameStart} playerProfile={player1} setPlayerProfile={setPlayer1} onPlayerNameChange={handlePlayerNameChange} onAvatarChange={handleAvatarChange} />
+                <GameSetup onGameStart={handleGameStart} playerProfile={player1} setPlayerProfile={setPlayer1} onPlayerNameChange={handlePlayerNameChange} onAvatarChange={handleAvatarChange} onToggleTheme={toggleTheme} />
             </div>
         );
     }

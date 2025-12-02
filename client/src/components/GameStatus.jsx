@@ -9,7 +9,7 @@ const GameStatus = ({ turn, isCheck, isGameOver, players }) => {
         <div className="text-center mb-2">
             <h2 className={`text-2xl font-extrabold tracking-tight ${isGameOver
                     ? 'text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-pink-600'
-                    : 'text-white'
+                    : 'text-gray-800 dark:text-white'
                 }`}>
                 {!isGameOver ? turnText : "Game Over"}
             </h2>

@@ -30,7 +30,7 @@ const generateLocalAvatar = (name) => {
     `;
     return `data:image/svg+xml;base64,${btoa(svg)}`;
 };
-export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlayerNameChange, onAvatarChange }) => {
+export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlayerNameChange, onAvatarChange, onToggleTheme }) => {
     const [gameMode, setGameMode] = useState('pva');
     const [subMode, setSubMode] = useState('create'); // 'create' or 'join' for pvf
     const [joinGameId, setJoinGameId] = useState('');
@@ -183,16 +183,25 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
 
     return (
         <div className="bg-white/80 dark:bg-gray-900/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-lg text-gray-800 dark:text-white border border-gray-300 dark:border-gray-700/50">
-            <div className="relative text-center mb-8">
-                <h1 className="text-5xl font-extrabold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent mb-2">Chess Master</h1>
-                <p className="text-gray-400">Choose your battleground</p>
-                {/* Profile icon button */}
-                <div className="absolute top-0 right-0">
+            <div className="flex justify-between items-start mb-8">
+                {/* Left spacer to balance the layout */}
+                <div className="w-28"></div>
+                <div className="text-center">
+                    <h1 className="text-5xl font-extrabold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent mb-2">Chess Master</h1>
+                    <p className="text-gray-400">Choose your battleground</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    {/* Theme Toggle Button */}
+                    <button onClick={onToggleTheme} className="w-12 h-12 rounded-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 border-2 border-gray-300 dark:border-indigo-500/50 hover:border-indigo-500 transition-all text-xl">
+                        <span className="dark:hidden">🌙</span>
+                        <span className="hidden dark:inline">☀️</span>
+                    </button>
+                    {/* Profile icon button */}
                     <button onClick={() => setIsProfileVisible(true)} className="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-500/50 hover:border-indigo-500 transition-all shadow-lg shadow-indigo-500/20">
                         {playerProfile.avatar ? (
                             <img src={playerProfile.avatar} alt="Avatar" className="w-full h-full object-cover" />
                         ) : ( // Default icon for profile button
-                            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                            <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                                 <span className="text-xl">👤</span>
                             </div>
                         )}
