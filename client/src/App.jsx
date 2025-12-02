@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Chess } from 'chess.js';
 import { getLocalAiMove } from './services/localAiService';
-//import { connectSocket, onSocket, emitSocket, disconnectSocket } from './services/socketService';
+import { connectSocket, onSocket, emitSocket, disconnectSocket, getSocketId } from './services/socketService';
 import Chessboard from './components/Chessboard';
 import MoveHistory from './components/MoveHistory';
 import GameControls from './components/GameControls';
@@ -444,7 +444,7 @@ const App = () => {
                     const newGame = new Chess(fen);
                     setGame(newGame);
                     // Figure out our color
-                    const myColor = Object.keys(serverPlayers).find(c => serverPlayers[c].name === player1.name) || 'w';
+                    const myColor = Object.keys(serverPlayers).find(c => serverPlayers[c].id === getSocketId()) || 'w';
                     setPlayerColor(myColor);
                     setPlayer1(serverPlayers[myColor]);
                     setPlayer2(serverPlayers[myColor === 'w' ? 'b' : 'w']);

@@ -1,12 +1,20 @@
-import express, { json } from 'express';
+import express from 'express';
 import cors from 'cors';
-import { hash } from 'bcryptjs';
-import { execute, query } from './db';
-import { resolve } from 'path';
+import bcrypt from 'bcryptjs';
+const { hash } = bcrypt;
+import db from './db.js';
+const { execute, query } = db;
+import { resolve, dirname } from 'path';
 import { createServer } from 'http';
 import { Server } from "socket.io";
 import { Chess } from 'chess.js';
-require('dotenv').config({ path: resolve(__dirname, '../.env') });
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config({ path: resolve(__dirname, '.env') });
 
 const app = express();
 const server = createServer(app);
@@ -18,7 +26,7 @@ const io = new Server(server, {
 });
 
 app.use(cors()); // Allow cross-origin requests
-app.use(json()); // for parsing application/json
+app.use(express.json()); // for parsing application/json
 
 // --- API Endpoints ---
 
@@ -73,41 +81,55 @@ io.on('connection', (socket) => {
     socket.on('createGame', (player) => {
         const gameId = `game_${Math.random().toString(36).substr(2, 9)}`;
         const game = new Chess();
+
+        // Randomly assign creator to white or black
+        const creatorColor = Math.random() < 0.5 ? 'w' : 'b';
+        const players = {
+            w: creatorColor === 'w' ? { id: socket.id, ...player } : null,
+            b: creatorColor === 'b' ? { id: socket.id, ...player } : null
+        };
+
         activeGames[gameId] = {
             game,
-            players: { w: null, b: null },
+            players,
             creator: socket.id,
         };
-        console.log(`Game created with ID: ${gameId} by ${socket.id}`);
-        socket.emit('gameCreated', { gameId });
+
+        socket.join(gameId);
+        console.log(`Game created with ID: ${gameId} by ${socket.id} (Color: ${creatorColor})`);
+        socket.emit('gameCreated', { gameId, color: creatorColor });
     });
 
     // Player joins an existing game
     socket.on('joinGame', ({ gameId, player }) => {
-        if (!activeGames[gameId]) {
+        const gameRoom = activeGames[gameId];
+        if (!gameRoom) {
             return socket.emit('error', 'Game not found.');
         }
-        const gameRoom = activeGames[gameId];
 
-        // Assign player to a color
-        let color;
-        if (gameRoom.players.w === null) {
-            color = 'w';
-            gameRoom.players.w = { id: socket.id, ...player };
-        } else if (gameRoom.players.b === null) {
-            color = 'b';
-            gameRoom.players.b = { id: socket.id, ...player };
-        } else {
+        // Check if game is already full
+        if (gameRoom.players.w && gameRoom.players.b) {
             return socket.emit('error', 'Game is full.');
         }
 
+        // Assign player to the empty color
+        let color;
+        if (!gameRoom.players.w) {
+            color = 'w';
+            gameRoom.players.w = { id: socket.id, ...player };
+        } else {
+            color = 'b';
+            gameRoom.players.b = { id: socket.id, ...player };
+        }
+
         socket.join(gameId);
+        console.log(`Player ${socket.id} joined game ${gameId} as ${color}`);
+
+        // Notify the joiner
         socket.emit('joinedGame', { gameId, color, fen: gameRoom.game.fen() });
 
-        // If both players have joined, start the game
-        if (gameRoom.players.w && gameRoom.players.b) {
-            io.to(gameId).emit('gameStart', { fen: gameRoom.game.fen(), players: gameRoom.players });
-        }
+        // Start the game immediately since we now have both players
+        io.to(gameId).emit('gameStart', { fen: gameRoom.game.fen(), players: gameRoom.players });
     });
 
     // --- Ranked Matchmaking ---
