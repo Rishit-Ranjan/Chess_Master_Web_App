@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getUserProfile, updateUserProfile } from '../services/apiService.js';
 // Function to create a simple, deterministic SVG avatar from a name
 const generateLocalAvatar = (name) => {
     const getInitials = (nameStr) => {
@@ -29,7 +30,7 @@ const generateLocalAvatar = (name) => {
     `;
     return `data:image/svg+xml;base64,${btoa(svg)}`;
 };
-export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAvatarChange }) => {
+export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlayerNameChange, onAvatarChange }) => {
     const [gameMode, setGameMode] = useState('pva');
     const [subMode, setSubMode] = useState('create'); // 'create' or 'join' for pvf
     const [joinGameId, setJoinGameId] = useState('');
@@ -38,12 +39,31 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
     const [playerName, setPlayerName] = useState(playerProfile.name);
     const [isGenerating, setIsGenerating] = useState(false);
     // State to control the visibility of the profile modal
-    const [isProfileVisible, setIsProfileVisible] = useState(false);
+    const [isProfileVisible, setIsProfileVisible] = useState(!playerProfile.id); // Show profile modal if no user is "logged in"
     const fileInputRef = useRef(null);
 
     useEffect(() => {
         setPlayerName(playerProfile.name);
     }, [playerProfile.name]);
+
+    // Simulate login/profile fetch
+    useEffect(() => {
+        // For this example, we'll use a hardcoded user ID.
+        // In a real app, you'd get this from a login process.
+        const LOGGED_IN_USER_ID = 1; // <-- Replace with real login later
+
+        if (LOGGED_IN_USER_ID && !playerProfile.id) {
+            getUserProfile(LOGGED_IN_USER_ID)
+                .then(response => {
+                    setPlayerProfile(response.data);
+                })
+                .catch(error => {
+                    console.error("Failed to fetch user profile:", error);
+                    // If user not found, prompt for creation/login
+                    setIsProfileVisible(true);
+                });
+        }
+    }, [playerProfile.id, setPlayerProfile]);
 
     const handleStart = () => {
         onPlayerNameChange(playerName);
@@ -67,7 +87,12 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
             try {
                 const avatarDataUrl = generateLocalAvatar(playerName);
                 if (avatarDataUrl) {
-                    onAvatarChange(avatarDataUrl);
+                    // Update on server first
+                    updateUserProfile(playerProfile.id, { avatar: avatarDataUrl }).then(() => {
+                        onAvatarChange(avatarDataUrl);
+                    }).catch(err => {
+                        alert("Failed to update avatar on server.");
+                    });
                 } else {
                     alert("Failed to generate avatar. Please try again.");
                 }
@@ -90,7 +115,12 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
             const reader = new FileReader();
             reader.onload = (e) => {
                 if (e.target?.result) {
-                    onAvatarChange(e.target.result);
+                    // Update on server first
+                    updateUserProfile(playerProfile.id, { avatar: e.target.result }).then(() => {
+                        onAvatarChange(e.target.result);
+                    }).catch(err => {
+                        alert("Failed to update avatar on server.");
+                    });
                 } else {
                     alert("Failed to read the avatar file.");
                 }
@@ -108,6 +138,17 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
     const isStartDisabled =
         !playerName.trim() ||
         (gameMode === 'pvf' && subMode === 'join' && !joinGameId.trim());
+
+    const handleNameBlur = () => {
+        if (playerName !== playerProfile.name && playerProfile.id) {
+            updateUserProfile(playerProfile.id, { name: playerName })
+                .then(() => {
+                    onPlayerNameChange(playerName);
+                }).catch(err => {
+                    alert("Failed to update name on server.");
+                });
+        }
+    };
 
     return (
         <div className="bg-gray-900/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-lg text-white border border-gray-700/50">
@@ -264,7 +305,7 @@ export const GameSetup = ({ onGameStart, playerProfile, onPlayerNameChange, onAv
                                     <input
                                         type="text"
                                         value={playerName}
-                                        onChange={(e) => setPlayerName(e.target.value)}
+                                        onChange={(e) => setPlayerName(e.target.value)} onBlur={handleNameBlur}
                                         className="w-full bg-gray-900/50 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none text-lg font-bold"
                                         placeholder="Enter your name"
                                     />

@@ -10,8 +10,8 @@ import GameOverModal from './components/GameOverModal';
 import { GameSetup } from './components/GameSetup';
 import PlayerInfo from './components/PlayerInfo';
 import PromotionModal from './components/PromotionModal';
-const PLAYER_PROFILE_KEY = 'gemini-chess-player-profile';
 const initialPlayer = {
+    id: null,
     name: 'Player 1',
     avatar: undefined,
     score: { wins: 0, losses: 0, draws: 0 },
@@ -115,14 +115,6 @@ const App = () => {
         return captured;
     }, [game]);
 
-    const savePlayerProfile = useCallback((profile) => {
-        try {
-            localStorage.setItem(PLAYER_PROFILE_KEY, JSON.stringify(profile));
-        }
-        catch (error) {
-            console.error("Failed to save player profile:", error);
-        }
-    }, []);
     const updateGameStatus = useCallback(() => {
         if (isResigned)
             return;
@@ -151,8 +143,21 @@ const App = () => {
         if (winner !== null) {
             setGameOverState({ reason, winner });
             setCheckmateHighlight(getCheckmateHighlightData(game));
+
+            // For online games, notify the server about the outcome
+            if ((gameMode === 'pvo' || gameMode === 'pvf') && onlineGameId) {
+                const outcome = winner === 'draw' ? 'draw' : 'win';
+                const loser = winner === 'w' ? 'b' : 'w';
+                emitSocket('gameOver', {
+                    gameId: onlineGameId,
+                    winner: outcome === 'win' ? winner : null,
+                    loser: outcome === 'win' ? loser : null,
+                    outcome: outcome,
+                });
+            }
         }
-    }, [game, isResigned]);
+    }, [game, isResigned, gameMode, onlineGameId]);
+
     const makeMove = useCallback((move) => {
         try {
             // Create a new game instance from PGN to preserve history for undo
@@ -323,25 +328,6 @@ const App = () => {
     const [onlineGameId, setOnlineGameId] = useState(null);
     const [createdGameId, setCreatedGameId] = useState(null); // For PVF creator
 
-    // Effect to load player profile on mount
-    useEffect(() => {
-        try {
-            const savedProfile = localStorage.getItem(PLAYER_PROFILE_KEY);
-            if (savedProfile) {
-                const parsed = JSON.parse(savedProfile);
-                if (parsed.name && parsed.score && parsed.avatar) {
-                    setPlayer1({ ...initialPlayer, ...parsed });
-                }
-            }
-        }
-        catch (error) {
-            console.error("Failed to load player profile:", error);
-        }
-    }, []);
-    // Effect to save profile whenever it changes
-    useEffect(() => {
-        savePlayerProfile(player1);
-    }, [player1, savePlayerProfile]);
     // Effect to trigger AI move
     useEffect(() => {
         if (inGame && gameMode === 'pva' && game.turn() !== playerColor && !gameOverState) {
@@ -465,7 +451,7 @@ const App = () => {
         if (inGame) {
             updateGameStatus();
             // When game is over, you might want to fetch updated profiles
-            if (gameOverState && (gameMode === 'pvo' || gameMode === 'pvf')) {
+            if (gameOverState && (gameMode === 'pvo' || gameMode === 'pvf') && player1.id) {
                 // Example: fetchUpdatedProfiles(player1.id, player2.id);
                 // This would make API calls to get the latest scores.
             }
@@ -476,7 +462,7 @@ const App = () => {
         setGameMode(mode);
         setPlayerColor(humanColor);
         setDifficulty(diff);
-        setPlayer1(p1Profile);
+        setPlayer1(p => ({ ...p, ...p1Profile })); // Merge with existing state
         const { name: p1Name, avatar, score } = p1Profile;
         if (mode === 'pva') {
             const aiName = 'Local AI';
@@ -490,7 +476,7 @@ const App = () => {
         }
         else if (mode === 'pvo') {
             // For online, we don't start the game here. We start searching.
-            emitSocket('findMatch', { name: p1Name, avatar, score });
+            emitSocket('findMatch', { dbId: p1Profile.id, name: p1Name, avatar, score });
             setPlayer2({
                 name: p2NameStr,
                 avatar: P2_AVATAR_SVG,
@@ -499,9 +485,9 @@ const App = () => {
         } else if (mode === 'pvf') {
             // Play with Friend
             if (pvfData.subMode === 'create') {
-                emitSocket('createGame', { name: p1Name, avatar, score });
+                emitSocket('createGame', { dbId: p1Profile.id, name: p1Name, avatar, score });
             } else {
-                emitSocket('joinGame', { gameId: pvfData.joinGameId, player: { name: p1Name, avatar, score } });
+                emitSocket('joinGame', { gameId: pvfData.joinGameId, player: { dbId: p1Profile.id, name: p1Name, avatar, score } });
             }
             setPlayer2({
                 name: 'Opponent', // Will be updated when game starts
@@ -556,7 +542,7 @@ const App = () => {
     if (!inGame && !isSearching) {
         return (
             <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-[#0a0a0a] to-black text-white flex flex-col items-center justify-center p-4">
-                <GameSetup onGameStart={handleGameStart} playerProfile={player1} onPlayerNameChange={handlePlayerNameChange} onAvatarChange={handleAvatarChange} />
+                <GameSetup onGameStart={handleGameStart} playerProfile={player1} setPlayerProfile={setPlayer1} onPlayerNameChange={handlePlayerNameChange} onAvatarChange={handleAvatarChange} />
             </div>
         );
     }

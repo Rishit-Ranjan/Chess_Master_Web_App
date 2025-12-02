@@ -261,6 +261,39 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Listen for game over event from client to update scores
+    socket.on('gameOver', async ({ gameId, winner, loser, outcome }) => {
+        const gameRoom = activeGames[gameId];
+        if (!gameRoom) return;
+
+        const winnerId = gameRoom.players[winner]?.dbId;
+        const loserId = gameRoom.players[loser]?.dbId;
+
+        try {
+            if (outcome === 'win' && winnerId && loserId) {
+                console.log(`Updating scores for game ${gameId}: Winner ${winnerId}, Loser ${loserId}`);
+                await Promise.all([
+                    execute('UPDATE users SET wins = wins + 1 WHERE id = ?', [winnerId]),
+                    execute('UPDATE users SET losses = losses + 1 WHERE id = ?', [loserId]),
+                ]);
+            } else if (outcome === 'draw' && winnerId && loserId) {
+                console.log(`Updating scores for game ${gameId}: Draw between ${winnerId} and ${loserId}`);
+                await Promise.all([
+                    execute('UPDATE users SET draws = draws + 1 WHERE id = ?', [winnerId]),
+                    execute('UPDATE users SET draws = draws + 1 WHERE id = ?', [loserId]),
+                ]);
+            }
+            // Optionally update the 'games' table status
+            // await execute('UPDATE games SET status = ?, winner_id = ? WHERE id = ?', ['completed', winnerId, gameId]);
+
+        } catch (error) {
+            console.error('Error updating scores on game over:', error);
+        }
+
+        // Clean up the game from memory
+        setTimeout(() => delete activeGames[gameId], 5000);
+    });
+
     socket.on('disconnect', () => {
         console.log(`User disconnected: ${socket.id}`);
         // Remove player from matchmaking queue if they disconnect
