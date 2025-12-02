@@ -1,3 +1,4 @@
+import React from 'react';
 import { pieceToSvg } from './Piece';
 
 const PlayerInfo = ({ player, color, isTurn, capturedPieces = [] }) => {
