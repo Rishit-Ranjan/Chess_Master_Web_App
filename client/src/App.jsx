@@ -60,11 +60,7 @@ const getCheckmateHighlightData = (game) => {
     const attackers = findAttackingSquares(game, kingSquare, attackingColor);
     return { king: kingSquare, attackers };
 };
-// FIX: Completed the App component, which was previously truncated. This involved:
-// 1. Finishing the `updateGameStatus` function to correctly identify all draw conditions.
-// 2. Adding game logic handlers for player moves, AI turns, promotions, and game controls (new round, resign, undo).
-// 3. Implementing the main JSX return value, which renders the game setup screen or the main chessboard view.
-// 4. Adding `export default App;` to resolve the import error in `index.tsx`.
+
 const App = () => {
     const [game, setGame] = useState(new Chess());
     const [gameMode, setGameMode] = useState('pva');
