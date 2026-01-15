@@ -1,7 +1,13 @@
 import React from 'react';
 import { pieceToSvg } from './Piece';
 
-const PlayerInfo = ({ player, color, isTurn, capturedPieces = [] }) => {
+const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const PlayerInfo = ({ player, color, isTurn, capturedPieces = [], timeRemaining }) => {
     const colorName = color === 'w' ? 'White' : 'Black';
     // Use a gradient border for the active turn
     const activeClass = isTurn
@@ -57,6 +63,16 @@ const PlayerInfo = ({ player, color, isTurn, capturedPieces = [] }) => {
                     <div className="font-bold text-gray-400">{player.score?.draws ?? 0}</div>
                 </div>
             </div>
+
+            {/* Timer Display */}
+            {timeRemaining !== undefined && (
+                <div className={`mt-3 text-center py-1 rounded-lg font-mono text-xl font-bold tracking-widest border transition-all ${isTurn
+                    ? (timeRemaining < 30 ? 'bg-red-500/20 text-red-500 border-red-500 animate-pulse' : 'bg-indigo-500/10 text-indigo-500 border-indigo-500/50')
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-transparent'
+                    }`}>
+                    {formatTime(timeRemaining)}
+                </div>
+            )}
         </div>
     );
 };

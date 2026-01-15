@@ -83,6 +83,15 @@ const App = () => {
     const [inGame, setInGame] = useState(false);
     // Player profiles
     const [isSearching, setIsSearching] = useState(false);
+
+    // Timer State
+    const [timeRemaining, setTimeRemaining] = useState({ w: 600, b: 600 }); // Default 10 min
+    const [initialTime, setInitialTime] = useState(600);
+    const gameRef = useRef(game);
+
+    useEffect(() => {
+        gameRef.current = game;
+    }, [game]);
     // --- Online Game State ---
     const [onlineGameId, setOnlineGameId] = useState(null);
     const [createdGameId, setCreatedGameId] = useState(null); // For PVF creator
@@ -324,7 +333,10 @@ const App = () => {
         setGameOverState(null);
         setLastMove(null);
         setCheckmateHighlight(null);
+        setCheckmateHighlight(null);
         setIsResigned(false);
+        // Reset timers
+        setTimeRemaining({ w: initialTime, b: initialTime });
     };
 
     const handlePlayerNameChange = useCallback((newName) => {
@@ -360,6 +372,14 @@ const App = () => {
                 onSocket('gameStart', ({ fen, players: serverPlayers }) => {
                     const newGame = new Chess(fen);
                     setGame(newGame);
+                    // Set time control
+                    const p1 = Object.values(serverPlayers)[0];
+                    const p2 = Object.values(serverPlayers)[1];
+                    const tc = p1?.timeControl || p2?.timeControl || 10;
+                    const limits = tc * 60;
+                    setInitialTime(limits);
+                    setTimeRemaining({ w: limits, b: limits });
+
                     // Set player info based on what the server assigned
                     // Use a callback for setPlayerColor to get the latest value
                     setPlayerColor(prevColor => {
@@ -375,6 +395,15 @@ const App = () => {
                     const newGame = new Chess(fen);
                     setGame(newGame);
                     setInGame(true);
+
+                    // Set time control
+                    const p1 = Object.values(serverPlayers)[0];
+                    const p2 = Object.values(serverPlayers)[1];
+                    const tc = p1?.timeControl || p2?.timeControl || 10;
+                    const limits = tc * 60;
+                    setInitialTime(limits);
+                    setTimeRemaining({ w: limits, b: limits });
+
                     setPlayerColor(prevColor => {
                         setPlayer1(serverPlayers[prevColor]);
                         setPlayer2(serverPlayers[prevColor === 'w' ? 'b' : 'w']);
@@ -421,6 +450,15 @@ const App = () => {
                     const newGame = new Chess(fen);
                     setGame(newGame);
                     setInGame(true); // This will trigger the game screen to show
+
+                    // Set time control
+                    const p1 = Object.values(serverPlayers)[0];
+                    const p2 = Object.values(serverPlayers)[1];
+                    const tc = p1?.timeControl || p2?.timeControl || 10;
+                    const limits = tc * 60;
+                    setInitialTime(limits);
+                    setTimeRemaining({ w: limits, b: limits });
+
                     // Figure out our color
                     const myColor = Object.keys(serverPlayers).find(c => serverPlayers[c].name === player1.name) || 'w';
                     setPlayerColor(myColor);
@@ -449,6 +487,15 @@ const App = () => {
                     setInGame(true);
                     const newGame = new Chess(fen);
                     setGame(newGame);
+
+                    // Set time control
+                    const p1 = Object.values(serverPlayers)[0];
+                    const p2 = Object.values(serverPlayers)[1];
+                    const tc = p1?.timeControl || p2?.timeControl || 10;
+                    const limits = tc * 60;
+                    setInitialTime(limits);
+                    setTimeRemaining({ w: limits, b: limits });
+
                     // Figure out our color
                     const myColor = Object.keys(serverPlayers).find(c => serverPlayers[c].id === getSocketId()) || 'w';
                     setPlayerColor(myColor);
@@ -463,28 +510,69 @@ const App = () => {
 
     // Effect to check game status after every move
     useEffect(() => {
-        // For online games, the server is the source of truth for game over,
-        // but we can still check for local display purposes.
         if (inGame) {
             updateGameStatus();
-            // When game is over, you might want to fetch updated profiles
-            if (gameOverState && (gameMode === 'pvo' || gameMode === 'pvf') && player1.id) {
-                // Example: fetchUpdatedProfiles(player1.id, player2.id);
-                // This would make API calls to get the latest scores.
-            }
         }
     }, [moveHistory, inGame, updateGameStatus]);
 
-    const handleGameStart = useCallback((mode, p1Profile, p2NameStr, humanColor, diff, pvfData) => {
+    // Timer Logic
+    useEffect(() => {
+        let interval = null;
+        if (inGame && !gameOverState) {
+            interval = setInterval(() => {
+                const turn = gameRef.current.turn();
+                setTimeRemaining(prev => {
+                    if (prev[turn] <= 0) {
+                        return prev; // Already handled or 0
+                    }
+                    const newTime = prev[turn] - 1;
+                    if (newTime <= 0) {
+                        // Timeout!
+                        clearInterval(interval);
+                        // Using setTimeout to avoid state update during render if this triggers synchronously
+                        setTimeout(() => {
+                            const winner = turn === 'w' ? 'b' : 'w';
+                            const reason = 'Timeout';
+                            setGameOverState({ reason, winner });
+                            // Notify server if online
+                            // Accessing state inside timeout might be stale for gameMode/onlineGameId, but refs or simple checks help
+                            // Ideally we should move this timeout logic to a separate effect or use functional updates carefully
+                            // But for now, we'll let the effect dependency handle cleanup
+                        }, 0);
+                        return { ...prev, [turn]: 0 };
+                    }
+                    return { ...prev, [turn]: newTime };
+                });
+            }, 1000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [inGame, gameOverState]); // Removed game dependency to avoid resetting interval on moves
+
+    const handleGameStart = useCallback((mode, p1Profile, p2NameStr, humanColor, diff, options) => {
         setGameMode(mode);
         setPlayerColor(humanColor);
         setDifficulty(diff);
         setPlayer1(p => ({ ...p, ...p1Profile })); // Merge with existing state
+
+        // Extract time control (default to 600s / 10m if not provided)
+        const timeLimit = (options?.timeControl || 10) * 60;
+        setInitialTime(timeLimit);
+        setTimeRemaining({ w: timeLimit, b: timeLimit });
+
         const { name: p1Name, avatar, score } = p1Profile;
         if (mode === 'pva') {
             const aiName = 'Local AI';
             setInGame(true);
             resetGame();
+            // We need to set the specific initial time here because resetGame uses the state 'initialTime' which might not be updated yet due to closure
+            // So we manaully update the timer state here or rely on the state update in next render.
+            // Actually resetGame uses 'initialTime' state. Since setState is async, resetGame might read old initialTime.
+            // Let's fix this by passing explicit time to reset/init.
+            // For now, I'll direct set it.
+            setTimeRemaining({ w: timeLimit, b: timeLimit }); // Ensure it's set correctly
+
             setPlayer2({
                 name: aiName,
                 avatar: AI_AVATAR_SVG,
@@ -501,10 +589,11 @@ const App = () => {
             });
         } else if (mode === 'pvf') {
             // Play with Friend
-            if (pvfData.subMode === 'create') {
-                emitSocket('createGame', { dbId: p1Profile.id, name: p1Name, avatar, score });
+            const { subMode, joinGameId } = options;
+            if (subMode === 'create') {
+                emitSocket('createGame', { dbId: p1Profile.id, name: p1Name, avatar, score, timeControl: options?.timeControl });
             } else {
-                emitSocket('joinGame', { gameId: pvfData.joinGameId, player: { dbId: p1Profile.id, name: p1Name, avatar, score } });
+                emitSocket('joinGame', { gameId: joinGameId, player: { dbId: p1Profile.id, name: p1Name, avatar, score, timeControl: options?.timeControl } });
             }
             setPlayer2({
                 name: 'Opponent', // Will be updated when game starts
@@ -571,7 +660,7 @@ const App = () => {
             <main className="w-full max-w-screen-xl mx-auto flex flex-col lg:flex-row gap-6">
                 {/* Left Panel: Player Info & Controls */}
                 <div className="lg:w-1/4 flex flex-col gap-2 order-3 lg:order-2">
-                    <PlayerInfo player={players.b} color="b" isTurn={game.turn() === 'b'} capturedPieces={capturedPieces.b} />
+                    <PlayerInfo player={players.b} color="b" isTurn={game.turn() === 'b'} capturedPieces={capturedPieces.b} timeRemaining={timeRemaining.b} />
 
                     <div className="flex-grow flex flex-col gap-4 p-5 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl border border-gray-200 dark:border-white/5 rounded-2xl shadow-xl">
                         <GameStatus turn={game.turn()} isCheck={game.inCheck()} isGameOver={!!gameOverState} players={players} />
@@ -579,7 +668,7 @@ const App = () => {
                         <GameControls onNewRound={handleNewRound} onChangeSettings={handleChangeSettings} onUndoMove={handleUndoMove} onResign={handleResign} isUndoPossible={moveHistory.length > 0} isGameOver={!!gameOverState} onToggleTheme={toggleTheme} />
                     </div>
 
-                    <PlayerInfo player={players.w} color="w" isTurn={game.turn() === 'w'} capturedPieces={capturedPieces.w} />
+                    <PlayerInfo player={players.w} color="w" isTurn={game.turn() === 'w'} capturedPieces={capturedPieces.w} timeRemaining={timeRemaining.w} />
                 </div>
 
                 {/* Center: Chessboard */}

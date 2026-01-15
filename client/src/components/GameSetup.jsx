@@ -35,6 +35,7 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
     const [subMode, setSubMode] = useState('create'); // 'create' or 'join' for pvf
     const [joinGameId, setJoinGameId] = useState('');
     const [difficulty, setDifficulty] = useState('medium');
+    const [timeControl, setTimeControl] = useState(10); // Default 10 minutes
     const [humanPlayerColor, setHumanPlayerColor] = useState('w');
     const [playerName, setPlayerName] = useState(playerProfile.name);
     const [password, setPassword] = useState('');
@@ -62,9 +63,11 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
         const profile = { ...playerProfile, name: playerName };
         if (gameMode === 'pvf') {
             const creatorColor = subMode === 'create' ? (Math.random() > 0.5 ? 'w' : 'b') : humanPlayerColor;
-            onGameStart(gameMode, profile, null, creatorColor, difficulty, { subMode, joinGameId });
+            // Pass timeControl in the profile or as a separate argument. 
+            // Here we pass it as a separate argument to onGameStart
+            onGameStart(gameMode, profile, null, creatorColor, difficulty, { subMode, joinGameId, timeControl });
         } else {
-            onGameStart(gameMode, profile, 'Player 2', humanPlayerColor, difficulty);
+            onGameStart(gameMode, profile, 'Player 2', humanPlayerColor, difficulty, { timeControl });
         }
     };
 
@@ -223,8 +226,8 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                                 key={mode.id}
                                 onClick={() => setGameMode(mode.id)}
                                 className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 ${gameMode === mode.id
-                                        ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-500/30 transform scale-105 text-white'
-                                        : 'bg-gray-200 dark:bg-gray-800 border-gray-300 dark:border-gray-700 hover:bg-gray-300 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-600'
+                                    ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-500/30 transform scale-105 text-white'
+                                    : 'bg-gray-200 dark:bg-gray-800 border-gray-300 dark:border-gray-700 hover:bg-gray-300 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-600'
                                     }`}
                             >
                                 <span className="text-2xl mb-1">{mode.icon}</span>
@@ -246,8 +249,8 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                                             key={d}
                                             onClick={() => setDifficulty(d)}
                                             className={`px-3 py-1 rounded-md text-xs font-bold capitalize transition-all ${difficulty === d
-                                                    ? (d === 'easy' ? 'bg-green-600 text-white' : d === 'medium' ? 'bg-yellow-500 text-white' : 'bg-red-600 text-white')
-                                                    : 'text-gray-400 hover:text-white'
+                                                ? (d === 'easy' ? 'bg-green-600 text-white' : d === 'medium' ? 'bg-yellow-500 text-white' : 'bg-red-600 text-white')
+                                                : 'text-gray-400 hover:text-white'
                                                 }`}
                                         >
                                             {d}
@@ -298,6 +301,33 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                     )}
                 </div>
 
+                {/* Time Control Selection */}
+                {gameMode !== 'pvo' && (
+                    <div className="bg-gray-200/50 dark:bg-gray-800/30 rounded-xl p-4 border border-gray-300/50 dark:border-gray-700/50 mt-4">
+                        <span className="text-sm text-gray-400 block mb-2">Time Control</span>
+                        <div className="flex gap-2">
+                            {[
+                                { label: '1 min', value: 1 },
+                                { label: '3 min', value: 3 },
+                                { label: '5 min', value: 5 },
+                                { label: '10 min', value: 10 },
+                                { label: '30 min', value: 30 },
+                            ].map((tc) => (
+                                <button
+                                    key={tc.value}
+                                    onClick={() => setTimeControl(tc.value)}
+                                    className={`flex-1 py-1 rounded-md text-xs font-bold transition-all ${timeControl === tc.value
+                                        ? 'bg-indigo-600 text-white shadow'
+                                        : 'bg-gray-900 text-gray-400 hover:text-white'
+                                        }`}
+                                >
+                                    {tc.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* Start Game Button */}
                 <button
                     onClick={handleStart}
@@ -319,7 +349,7 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                         >
                             &times;
                         </button>
-                        
+
                         {!playerProfile.id && (
                             <div className="flex bg-gray-200 dark:bg-gray-900 rounded-lg p-1 mb-6">
                                 <button onClick={() => setAuthMode('register')} className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${authMode === 'register' ? 'bg-indigo-600 text-white shadow' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white'}`}>

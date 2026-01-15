@@ -1,3 +1,6 @@
+# Chess Master
+
+
 ## User Registration
 
 <img width="698" height="673" alt="image" src="https://github.com/user-attachments/assets/cd3fe3e7-fe5c-40e8-bdf7-3cf02e00dd25" /><br/><br/>
