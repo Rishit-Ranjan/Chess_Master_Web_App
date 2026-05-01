@@ -1,5 +1,6 @@
 # Chess Master
 
+Chess Master is a chass game web app. Either play with friends or against AI in easy, medium or hard mode
 
 ## User Registration
 
