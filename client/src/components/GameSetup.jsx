@@ -216,12 +216,14 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                 {/* Game Mode Selection */}
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-3">Select Game Mode</label>
-                    <div className="grid grid-cols-3 gap-3">
-                        {[
-                            { id: 'pva', label: 'vs Computer', icon: '🤖' },
+<div className="grid grid-cols-4 gap-2">
+{[
+                            { id: 'pva', label: 'vs AI', icon: '🤖' },
+                            { id: 'pvp', label: '2 Player', icon: '👫' },
                             { id: 'pvo', label: 'Ranked', icon: '🏆' },
-                            { id: 'pvf', label: 'Play Friend', icon: '👥' }
+                            { id: 'pvf', label: 'Friend', icon: '👥' }
                         ].map(mode => (
+                        
                             <button
                                 key={mode.id}
                                 onClick={() => setGameMode(mode.id)}
@@ -239,7 +241,7 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
 
                 {/* Mode Specific Options */}
                 <div className="bg-gray-200/50 dark:bg-gray-800/30 rounded-xl p-4 border border-gray-300/50 dark:border-gray-700/50 min-h-[120px] flex flex-col justify-center">
-                    {gameMode === 'pva' && (
+{gameMode === 'pva' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-gray-400">Difficulty</span>
@@ -265,6 +267,13 @@ export const GameSetup = ({ onGameStart, playerProfile, setPlayerProfile, onPlay
                                     <button onClick={() => setHumanPlayerColor('b')} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${humanPlayerColor === 'b' ? 'border-indigo-500 bg-black text-white' : 'border-gray-600 bg-gray-800 text-gray-500'}`}>♚</button>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {gameMode === 'pvp' && (
+                        <div className="text-center animate-fadeIn">
+                            <p className="text-sm text-gray-300">Play locally with a friend on the same device.</p>
+                            <p className="text-xs text-gray-500 mt-1">Take turns passing the device.</p>
                         </div>
                     )}
 

@@ -1,6 +1,6 @@
 import React from 'react';
 
-const GameControls = ({ onNewRound, onChangeSettings, onUndoMove, onResign, isUndoPossible, isGameOver, onToggleTheme }) => {
+const GameControls = ({ onNewRound, onChangeSettings, onUndoMove, onResign, isUndoPossible, isGameOver, onOfferDraw, onExportPgn }) => {
     const btnBase = "w-full py-2.5 px-4 rounded-lg font-bold text-sm transition-all duration-200 transform hover:-translate-y-0.5 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none";
 
     return (
@@ -22,6 +22,22 @@ const GameControls = ({ onNewRound, onChangeSettings, onUndoMove, onResign, isUn
                 </button>
             </div>
 
+<button
+                onClick={onOfferDraw}
+                disabled={isGameOver}
+                className={`${btnBase} bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-amber-900/20`}
+            >
+                Offer Draw
+            </button>
+
+            <button
+                onClick={onExportPgn}
+                disabled={!onExportPgn}
+                className={`${btnBase} bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-blue-900/20`}
+            >
+                Export PGN
+            </button>
+
             <button
                 onClick={onNewRound}
                 className={`${btnBase} bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-900/20`}
@@ -34,12 +50,6 @@ const GameControls = ({ onNewRound, onChangeSettings, onUndoMove, onResign, isUn
                 className={`${btnBase} bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-indigo-900/20`}
             >
                 Settings
-            </button>
-            <button
-                onClick={onToggleTheme}
-                className={`${btnBase} bg-gray-200 hover:bg-gray-300 text-gray-700 border border-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 dark:border-gray-600`}
-            >
-                Toggle Theme
             </button>
         </div>
     );

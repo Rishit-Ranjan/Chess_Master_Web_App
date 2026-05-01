@@ -1,6 +1,6 @@
 import React from 'react';
 import Piece from './Piece';
-const Square = ({ isLight, piece, onClick, isSelected, isPossibleMove, isLastMove, isCheckmateKing, isCheckmateAttacker }) => {
+const Square = ({ isLight, piece, onClick, isSelected, isPossibleMove, isLastMove, isCheckmateKing, isCheckmateAttacker, isRookMove }) => {
     const bgClass = isLight ? 'bg-board-light' : 'bg-board-dark';
     let highlightClass = '';
     if (isCheckmateKing) {
@@ -14,6 +14,9 @@ const Square = ({ isLight, piece, onClick, isSelected, isPossibleMove, isLastMov
     }
     else if (isLastMove) {
         highlightClass = 'bg-yellow-500 bg-opacity-50';
+    }
+    else if (isRookMove) {
+        highlightClass = 'bg-yellow-400 bg-opacity-40';
     }
     return (<div onClick={onClick} className={`${bgClass} w-full h-full flex justify-center items-center cursor-pointer relative transition-colors duration-200`}>
              <div className={`absolute inset-0 ${highlightClass}`}></div>

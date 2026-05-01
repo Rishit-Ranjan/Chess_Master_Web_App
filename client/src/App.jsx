@@ -72,9 +72,11 @@ const App = () => {
     const [isAiThinking, setIsAiThinking] = useState(false);
     const [gameOverState, setGameOverState] = useState(null);
     const [promotionData, setPromotionData] = useState(null);
-    const [isResigned, setIsResigned] = useState(false);
-    const [checkmateHighlight, setCheckmateHighlight] = useState(null);
+const [isResigned, setIsResigned] = useState(false);
+const [checkmateHighlight, setCheckmateHighlight] = useState(null);
     const [lastMove, setLastMove] = useState(null);
+    const [castlingRookSquares, setCastlingRookSquares] = useState(null);
+    const [drawOfferReceived, setDrawOfferReceived] = useState(false);
     const [theme, setTheme] = useState('dark');
     const [inGame, setInGame] = useState(false);
     // Player profiles
@@ -106,20 +108,24 @@ const App = () => {
         };
     }, [player1, player2, playerColor, gameMode]);
 
-    // Calculate captured pieces
+// Calculate captured pieces
     const capturedPieces = useMemo(() => {
         const captured = { w: [], b: [] };
         // We need verbose history to see captured pieces
         const history = game.history({ verbose: true });
 
         for (const move of history) {
-            if (move.captured) {
+            // Handle regular captures and en passant
+            if (move.captured || move.flags.includes('e')) {
                 // If White captured a piece, it goes to White's captured list (showing Black pieces)
                 if (move.color === 'w') {
-                    captured.w.push(`b${move.captured}`);
+                    // En passant captures a pawn
+                    const capturedPiece = move.captured || 'p';
+                    captured.w.push(`b${capturedPiece}`);
                 } else {
                     // If Black captured a piece, it goes to Black's captured list (showing White pieces)
-                    captured.b.push(`w${move.captured}`);
+                    const capturedPiece = move.captured || 'p';
+                    captured.b.push(`w${capturedPiece}`);
                 }
             }
         }
@@ -169,7 +175,7 @@ const App = () => {
         }
     }, [game, isResigned, gameMode, onlineGameId]);
 
-    const makeMove = useCallback((move) => {
+const makeMove = useCallback((move) => {
         try {
             // Create a new game instance from PGN to preserve history for undo
             const newGame = new Chess();
@@ -179,6 +185,22 @@ const App = () => {
                 setGame(newGame);
                 setMoveHistory(newGame.history());
                 setLastMove({ from: result.from, to: result.to });
+                
+                // Detect castling - if king moves more than 1 square, the rook also moved
+                let rookSquares = null;
+                if (result.flags.includes('k') || result.flags.includes('q')) {
+                    // Castling happened - find rook squares
+                    const color = result.color;
+                    if (color === 'w') {
+                        if (result.flags.includes('k')) rookSquares = ['h1', 'f1'];
+                        else rookSquares = ['a1', 'd1'];
+                    } else {
+                        if (result.flags.includes('k')) rookSquares = ['h8', 'f8'];
+                        else rookSquares = ['a8', 'd8'];
+                    }
+                }
+                setCastlingRookSquares(rookSquares);
+                
                 setSelectedSquare(null);
                 setPossibleMoves([]);
                 return true;
@@ -297,7 +319,7 @@ const App = () => {
         setSelectedSquare(null);
         setPossibleMoves([]);
     };
-    const handleResign = () => {
+const handleResign = () => {
         if (gameOverState)
             return;
         const winner = game.turn() === 'w' ? 'b' : 'w';
@@ -310,6 +332,34 @@ const App = () => {
         // For local games, you would now make an API call to update scores
         setIsResigned(true);
     };
+
+const handleOfferDraw = useCallback(() => {
+        if (gameOverState)
+            return;
+        
+        if (gameMode === 'pvo' || gameMode === 'pvf') {
+            // Send draw offer to opponent
+            emitSocket('offerDraw', { gameId: onlineGameId });
+            alert('Draw offer sent to opponent.');
+        } else {
+            // For local games, immediately accept draw
+            const reason = 'Draw Accepted';
+            setGameOverState({ reason, winner: 'draw' });
+        }
+    }, [gameOverState, gameMode, onlineGameId]);
+
+    const handleExportPgn = useCallback(() => {
+        const pgn = game.pgn();
+        const blob = new Blob([pgn], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chess-game-${new Date().toISOString().slice(0, 10)}.pgn`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, [game]);
     const handleChangeSettings = () => {
         setInGame(false);
         resetGame(); // Reset only the game state, not the player
@@ -407,12 +457,24 @@ const App = () => {
                     });
                 });
 
-                onSocket('moveMade', ({ move, fen }) => {
+onSocket('moveMade', ({ move, fen }) => {
                     // A move was made by the opponent, update our game state
                     const newGame = new Chess(fen);
                     setGame(newGame);
                     setMoveHistory(newGame.history());
                     setLastMove({ from: move.from, to: move.to });
+                });
+
+                onSocket('drawOffered', ({ from }) => {
+                    // Received a draw offer from opponent
+                    setDrawOfferReceived(true);
+                    const opponentName = from === 'w' ? players.b.name : players.w.name;
+                    const accept = window.confirm(`${opponentName} offered a draw. Do you accept?`);
+                    if (accept) {
+                        emitSocket('acceptDraw', { gameId: onlineGameId });
+                        setGameOverState({ reason: 'Draw Accepted', winner: 'draw' });
+                    }
+                    setDrawOfferReceived(false);
                 });
 
                 onSocket('error', (message) => {
@@ -583,7 +645,7 @@ const App = () => {
                 avatar: P2_AVATAR_SVG,
                 score: { wins: 0, losses: 0, draws: 0 }
             });
-        } else if (mode === 'pvf') {
+} else if (mode === 'pvf') {
             // Play with Friend
             const { subMode, joinGameId } = options;
             if (subMode === 'create') {
@@ -593,6 +655,17 @@ const App = () => {
             }
             setPlayer2({
                 name: 'Opponent', // Will be updated when game starts
+                avatar: P2_AVATAR_SVG,
+                score: { wins: 0, losses: 0, draws: 0 }
+            });
+        }
+        else if (mode === 'pvp') {
+            // Local PvP: Both players play on the same device
+            setInGame(true);
+            resetGame();
+            setTimeRemaining({ w: timeLimit, b: timeLimit });
+            setPlayer2({
+                name: 'Player 2',
                 avatar: P2_AVATAR_SVG,
                 score: { wins: 0, losses: 0, draws: 0 }
             });
@@ -661,7 +734,7 @@ const App = () => {
                     <div className="flex-grow flex flex-col gap-4 p-5 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl border border-gray-200 dark:border-white/5 rounded-2xl shadow-xl">
                         <GameStatus turn={game.turn()} isCheck={game.inCheck()} isGameOver={!!gameOverState} players={players} />
                         <div className="h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-700 to-transparent my-2"></div>
-                        <GameControls onNewRound={handleNewRound} onChangeSettings={handleChangeSettings} onUndoMove={handleUndoMove} onResign={handleResign} isUndoPossible={moveHistory.length > 0} isGameOver={!!gameOverState} onToggleTheme={toggleTheme} />
+<GameControls onNewRound={handleNewRound} onChangeSettings={handleChangeSettings} onUndoMove={handleUndoMove} onResign={handleResign} isUndoPossible={moveHistory.length > 0} isGameOver={!!gameOverState} onOfferDraw={handleOfferDraw} onExportPgn={handleExportPgn} />
                     </div>
 
                     <PlayerInfo player={players.w} color="w" isTurn={game.turn() === 'w'} capturedPieces={capturedPieces.w} timeRemaining={timeRemaining.w} />
@@ -677,7 +750,7 @@ const App = () => {
                         </div>
                     )}
                     <div className="p-1 rounded-lg bg-gradient-to-br from-gray-400 to-gray-600 dark:from-gray-700 dark:to-gray-900 shadow-2xl">
-                        <Chessboard board={game.board()} onSquareClick={handleSquareClick} selectedSquare={selectedSquare} possibleMoves={possibleMoves.map(m => m.to)} playerColor={gameMode === 'pvp' ? game.turn() : playerColor} lastMove={lastMove} checkmateHighlight={checkmateHighlight} />
+<Chessboard board={game.board()} onSquareClick={handleSquareClick} selectedSquare={selectedSquare} possibleMoves={possibleMoves.map(m => m.to)} playerColor={gameMode === 'pvp' ? game.turn() : playerColor} lastMove={lastMove} checkmateHighlight={checkmateHighlight} castlingRookSquares={castlingRookSquares} />
                     </div>
                 </div>
 

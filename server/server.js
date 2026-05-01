@@ -228,31 +228,55 @@ io.on('connection', (socket) => {
         io.to(gameId).emit('gameStart', { fen: gameRoom.game.fen(), players: gameRoom.players });
     });
 
-    // --- Ranked Matchmaking ---
-    socket.on('findMatch', (player) => {
-        console.log(`Player ${player.name} (score: ${player.score.wins}) is looking for a match.`);
-        // For simplicity, we'll use wins as the score. In a real app, this would be a more complex ELO rating.
-        const playerScore = player.score?.wins ?? 0;
+// --- Ranked Matchmaking ---
+    // Calculate ELO rating difference
+    const calculateRatingDiff = (rating1, rating2) => {
+        return Math.abs(rating1 - rating2);
+    };
 
-        // Find a suitable opponent
-        const opponentIndex = matchmakingQueue.findIndex(
-            p => Math.abs(p.player.score.wins - playerScore) <= 200 // Match within 200 points
-        );
+    socket.on('findMatch', async (player) => {
+        console.log(`Player ${player.name} (ELO: ${player.ranking || 1200}) is looking for a match.`);
+        
+        // Use ELO rating (default 1200 if not set)
+        const playerRating = player.ranking || 1200;
+        
+        // Try to find a suitable opponent with similar ELO (within 100 points)
+        let opponentIndex = -1;
+        let bestMatch = null;
+        let minDiff = 100; // Maximum acceptable ELO difference
+
+        for (let i = 0; i < matchmakingQueue.length; i++) {
+            const queuedPlayer = matchmakingQueue[i].player;
+            const queuedRating = queuedPlayer.ranking || 1200;
+            const diff = calculateRatingDiff(playerRating, queuedRating);
+            
+            if (diff <= minDiff) {
+                opponentIndex = i;
+                minDiff = diff;
+                break; // Take the first reasonable match
+            }
+        }
 
         if (opponentIndex !== -1) {
             // Match found!
             const opponent = matchmakingQueue.splice(opponentIndex, 1)[0];
-            console.log(`Match found between ${player.name} and ${opponent.player.name}`);
+            console.log(`Match found between ${player.name} (${playerRating}) and ${opponent.player.name} (${opponent.player.ranking || 1200}) - ELO diff: ${minDiff}`);
 
             const gameId = `game_${Math.random().toString(36).substr(2, 9)}`;
             const game = new Chess();
 
             // Randomly assign colors
             const players = Math.random() < 0.5
-                ? { w: { id: socket.id, ...player }, b: { id: opponent.socket.id, ...opponent.player } }
-                : { w: { id: opponent.socket.id, ...opponent.player }, b: { id: socket.id, ...player } };
+                ? { w: { id: socket.id, ...player, ranking: playerRating }, b: { id: opponent.socket.id, ...opponent.player } }
+                : { w: { id: opponent.socket.id, ...opponent.player }, b: { id: socket.id, ...player, ranking: playerRating } };
 
             activeGames[gameId] = { game, players };
+
+            // Store initial ratings for ELO calculation later
+            activeGames[gameId].ratings = {
+                w: players.w.ranking || 1200,
+                b: players.b.ranking || 1200
+            };
 
             // Join both players to the new game room
             socket.join(gameId);
@@ -268,7 +292,7 @@ io.on('connection', (socket) => {
         } else {
             // No suitable opponent found, add player to the queue
             console.log(`${player.name} added to matchmaking queue.`);
-            matchmakingQueue.push({ socket, player });
+            matchmakingQueue.push({ socket, player, rating: playerRating });
             socket.emit('searchingForMatch');
         }
     });
@@ -297,7 +321,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Player resigns from the game
+// Player resigns from the game
     socket.on('resign', ({ gameId }) => {
         const gameRoom = activeGames[gameId];
         if (!gameRoom) return;
@@ -334,6 +358,36 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Player offers a draw
+    socket.on('offerDraw', ({ gameId }) => {
+        const gameRoom = activeGames[gameId];
+        if (!gameRoom) return;
+        
+        const offeringPlayerColor = Object.keys(gameRoom.players).find(
+            color => gameRoom.players[color] && gameRoom.players[color].id === socket.id
+        );
+        
+        if (offeringPlayerColor) {
+            // Notify the opponent about the draw offer
+            socket.to(gameId).emit('drawOffered', { from: offeringPlayerColor });
+            console.log(`Draw offer from ${gameRoom.players[offeringPlayerColor].name} in game ${gameId}`);
+        }
+    });
+
+    // Player accepts a draw offer
+    socket.on('acceptDraw', ({ gameId }) => {
+        const gameRoom = activeGames[gameId];
+        if (!gameRoom) return;
+        
+        // Notify both players that the draw was accepted
+        io.to(gameId).emit('gameOver', { winner: 'draw', reason: 'Draw Accepted' });
+        
+        console.log(`Draw accepted in game ${gameId}`);
+        
+        // Clean up the game from memory
+        setTimeout(() => delete activeGames[gameId], 5000);
+    });
+
     // Listen for game over event from client to update scores
     socket.on('gameOver', async ({ gameId, winner, loser, outcome }) => {
         const gameRoom = activeGames[gameId];
@@ -367,7 +421,7 @@ io.on('connection', (socket) => {
         setTimeout(() => delete activeGames[gameId], 5000);
     });
 
-    socket.on('disconnect', () => {
+socket.on('disconnect', () => {
         console.log(`User disconnected: ${socket.id}`);
         // Remove player from matchmaking queue if they disconnect
         const index = matchmakingQueue.findIndex(p => p.socket.id === socket.id);
@@ -375,7 +429,39 @@ io.on('connection', (socket) => {
             matchmakingQueue.splice(index, 1);
             console.log(`Player ${socket.id} removed from queue due to disconnection.`);
         }
-        // TODO: Handle disconnection during an active game (e.g., declare opponent the winner)
+        
+        // Handle disconnection during an active game - declare opponent the winner
+        for (const [gameId, gameRoom] of Object.entries(activeGames)) {
+            const disconnectedColor = Object.keys(gameRoom.players).find(
+                color => gameRoom.players[color] && gameRoom.players[color].id === socket.id
+            );
+            
+            if (disconnectedColor) {
+                const winner = disconnectedColor === 'w' ? 'b' : 'w';
+                const loser = disconnectedColor;
+                const reason = `${gameRoom.players[disconnectedColor].name} disconnected.`;
+
+                const winnerId = gameRoom.players[winner]?.dbId;
+                const loserId = gameRoom.players[loser]?.dbId;
+
+                // Update scores in the database
+                if (winnerId && loserId) {
+                    Promise.all([
+                        dbPool.execute('UPDATE users SET wins = wins + 1 WHERE id = ?', [winnerId]),
+                        dbPool.execute('UPDATE users SET losses = losses + 1 WHERE id = ?', [loserId]),
+                    ]).catch(err => {
+                        console.error("Error updating scores on disconnection:", err);
+                    });
+                }
+
+                // Notify the remaining player about win by disconnection
+                io.to(gameId).emit('gameOver', { winner, reason });
+                
+                // Clean up the game
+                setTimeout(() => delete activeGames[gameId], 5000);
+                break;
+            }
+        }
     });
 });
 
