@@ -1,7 +1,6 @@
--- Chess Master Database Schema
--- Run this SQL to initialize your database
+create database chess_master;
+use chess_master;
 
--- Create users table
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
@@ -14,8 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Optional: Create games table to store game history
-CREATE TABLE IF NOT EXISTS games (
+CREATE TABLE if not exists games (
     id INT AUTO_INCREMENT PRIMARY KEY,
     game_id VARCHAR(255) NOT NULL UNIQUE,
     white_player_id INT,
