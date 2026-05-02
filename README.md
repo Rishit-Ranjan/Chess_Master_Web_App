@@ -19,7 +19,7 @@ Chess Master is a chess game web app. Either play with friends or against AI in 
 
 3. **Configure environment variables:**
    ```bash
-   cp server/.env.example server/.env
+   cp server/.env
    # Edit server/.env with your database credentials
    ```
 
